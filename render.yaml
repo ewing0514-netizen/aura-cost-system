@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: aura-cost-system
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: npm install
+    startCommand: node src/app.js
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
