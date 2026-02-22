@@ -29,8 +29,10 @@ app.get('*', (req, res) => {
 // 統一錯誤處理
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`AURA 成本系統 啟動於 http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`AURA 成本系統 啟動於 http://localhost:${PORT}`);
+  });
+}
 
 module.exports = app;
