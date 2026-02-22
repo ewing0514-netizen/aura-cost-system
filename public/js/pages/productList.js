@@ -6,7 +6,7 @@ async function renderProductList() {
     <div class="max-w-5xl mx-auto px-4 py-8">
       <div class="flex items-center justify-between mb-8">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">AURA 成本系統</h1>
+          <h1 class="text-2xl font-bold text-gray-900">Aúra 成本系統</h1>
           <p class="text-gray-500 text-sm mt-1">管理你的產品成本與定價策略</p>
         </div>
         <button id="btn-add-product" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 text-sm font-medium">
