@@ -82,50 +82,46 @@ async function loadTab(tab) {
 
 async function renderCostsTab(container) {
   const costs = await api.costs.list(currentProductId);
-  const total = costs.reduce((s, c) => s + parseFloat(c.amount), 0);
 
-  // 將成本依分組歸類
-  const grouped = {};
-  for (const groupKey of Object.keys(COST_GROUPS)) grouped[groupKey] = [];
-  for (const c of costs) {
-    const gk = CATEGORY_TO_GROUP[c.category] || 'other';
-    grouped[gk].push(c);
-  }
+  // 只顯示產品成本（material / labor / packaging）
+  const productCosts = costs.filter(c => (CATEGORY_TO_GROUP[c.category] || 'other') === 'product');
+  const total = productCosts.reduce((s, c) => s + parseFloat(c.amount), 0);
 
   container.innerHTML = `
     <div class="flex justify-between items-center mb-5">
       <div>
-        <span class="text-sm text-gray-500">共 ${costs.length} 項成本</span>
+        <span class="text-sm text-gray-500">共 ${productCosts.length} 項產品成本</span>
         <span class="mx-2 text-gray-300">|</span>
         <span class="text-sm font-semibold text-gray-900">總計 ${formatMoney(total)}</span>
       </div>
       <button id="btn-add-cost" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-700 flex items-center gap-1">
-        + 新增成本
+        + 新增產品成本
       </button>
     </div>
 
     <div class="space-y-4">
-      ${Object.entries(COST_GROUPS).map(([groupKey, group]) =>
-        renderCostGroupCard(groupKey, group, grouped[groupKey] || [])
-      ).join('')}
+      ${renderCostGroupCard('product', COST_GROUPS.product, productCosts)}
     </div>
+
+    <p class="text-xs text-gray-400 mt-5 text-center">
+      💡 營運、行銷、其他成本請在
+      <a href="#/" class="text-indigo-400 hover:underline">首頁 Dashboard</a> 管理
+    </p>
   `;
 
-  // 全域新增按鈕（不限定分組）
+  // 新增按鈕（鎖定 product 群組）
   document.getElementById('btn-add-cost').onclick = () =>
-    showCostModal(null, null, () => loadTab('costs'));
+    showCostModal(null, 'product', () => loadTab('costs'));
 
-  // 各分組新增按鈕
-  Object.keys(COST_GROUPS).forEach(groupKey => {
-    const btn = document.getElementById(`btn-group-add-${groupKey}`);
-    if (btn) btn.onclick = () => showCostModal(null, groupKey, () => loadTab('costs'));
-  });
+  const groupBtn = document.getElementById('btn-group-add-product');
+  if (groupBtn) groupBtn.onclick = () =>
+    showCostModal(null, 'product', () => loadTab('costs'));
 
   // 編輯按鈕
   container.querySelectorAll('.cost-edit-btn').forEach(btn => {
     btn.onclick = () => {
       const cost = JSON.parse(btn.dataset.cost);
-      showCostModal(cost, null, () => loadTab('costs'));
+      showCostModal(cost, 'product', () => loadTab('costs'));
     };
   });
 
@@ -207,81 +203,61 @@ function renderCostGroupCard(groupKey, group, costs) {
 // 新增/編輯成本 Modal
 // =====================================================
 
+// 產品成本 Modal（只限 product 類別：material / labor / packaging）
 function showCostModal(cost, defaultGroupKey, onSave) {
   const isEdit = !!cost;
 
-  // 初始狀態
   let activeCostType = cost ? (cost.cost_type || 'variable') : 'variable';
-  let activeGroupKey = defaultGroupKey
-    || (cost ? (CATEGORY_TO_GROUP[cost.category] || 'product') : 'product');
+  // 強制鎖定 product 群組
+  const activeGroupKey = 'product';
+  const productCats = COST_GROUPS.product.categories; // ['material','labor','packaging']
 
-  // 依分組產生 <optgroup> 下拉選單
-  function buildCategoryOptions(forGroupKey, selectedCat) {
-    const cats = COST_GROUPS[forGroupKey]?.categories || [];
-    const effective = (selectedCat && cats.includes(selectedCat)) ? selectedCat : cats[0];
-    return cats.map(v =>
+  function buildCategoryOptions(selectedCat) {
+    const effective = (selectedCat && productCats.includes(selectedCat)) ? selectedCat : productCats[0];
+    return productCats.map(v =>
       `<option value="${v}" ${effective === v ? 'selected' : ''}>${CATEGORY_LABELS[v] || v}</option>`
     ).join('');
   }
 
-  // 分組 Tab 按鈕 HTML
-  function buildGroupTabs(currentKey) {
-    return Object.entries(COST_GROUPS).map(([key, g]) => `
-      <button type="button" class="group-tab-btn ${key === currentKey ? 'active' : ''}" data-group="${key}">
-        ${g.icon} ${g.label}
-      </button>
-    `).join('');
-  }
-
   const html = `
-    <h3 class="text-lg font-semibold mb-4">${isEdit ? '編輯成本項目' : '新增成本項目'}</h3>
+    <h3 class="text-lg font-semibold mb-4">${isEdit ? '編輯產品成本' : '新增產品成本'}</h3>
     <form id="cost-form">
 
-      <!-- ① 可變成本 / 固定成本 切換 -->
+      <!-- 可變/固定切換 -->
       <div class="mb-4">
         <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">成本類型</label>
         <div class="cost-type-toggle">
-          <button type="button" id="toggle-variable"
-            class="${activeCostType === 'variable' ? 'active-variable' : ''}">
+          <button type="button" id="toggle-variable" class="${activeCostType === 'variable' ? 'active-variable' : ''}">
             📈 可變成本
           </button>
-          <button type="button" id="toggle-fixed"
-            class="${activeCostType === 'fixed' ? 'active-fixed' : ''}">
+          <button type="button" id="toggle-fixed" class="${activeCostType === 'fixed' ? 'active-fixed' : ''}">
             🏛️ 固定成本
           </button>
         </div>
         <p id="cost-type-hint" class="text-xs text-gray-400 mt-1.5 px-0.5">
           ${activeCostType === 'variable'
-            ? '📊 隨生產數量變動的成本（原料、人工、廣告等）'
+            ? '📊 隨生產數量變動的成本（原料、人工等）'
             : '📌 不隨數量變動的固定支出，納入損益平衡點計算'}
         </p>
       </div>
 
-      <!-- ② 成本分組 Tab -->
-      <div class="mb-3">
-        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">成本分組</label>
-        <div class="group-tab-bar" id="group-tab-bar">
-          ${buildGroupTabs(activeGroupKey)}
-        </div>
-      </div>
-
-      <!-- ③ 子分類下拉 -->
+      <!-- 類別（僅 product 三類）-->
       <div class="mb-3">
         <label class="block text-sm font-medium text-gray-700 mb-1">類別 <span class="text-red-500">*</span></label>
         <select id="c-cat" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          ${buildCategoryOptions(activeGroupKey, cost?.category)}
+          ${buildCategoryOptions(cost?.category)}
         </select>
       </div>
 
-      <!-- ④ 名稱 -->
+      <!-- 名稱 -->
       <div class="mb-3">
         <label class="block text-sm font-medium text-gray-700 mb-1">項目名稱 <span class="text-red-500">*</span></label>
         <input type="text" id="c-name" value="${isEdit ? escapeHtml(cost.name) : ''}"
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          placeholder="例如：皂基、製作工時、FB 廣告費" required>
+          placeholder="例如：皂基、人工費" required>
       </div>
 
-      <!-- ⑤ 金額 -->
+      <!-- 金額 -->
       <div class="mb-3">
         <label class="block text-sm font-medium text-gray-700 mb-1">金額（NT$）<span class="text-red-500">*</span></label>
         <input type="number" id="c-amount" value="${isEdit ? cost.amount : ''}" min="0" step="0.01"
@@ -289,7 +265,7 @@ function showCostModal(cost, defaultGroupKey, onSave) {
           placeholder="0.00" required>
       </div>
 
-      <!-- ⑥ 備註 -->
+      <!-- 備註 -->
       <div class="mb-5">
         <label class="block text-sm font-medium text-gray-700 mb-1">備註（選填）</label>
         <input type="text" id="c-note" value="${isEdit ? escapeHtml(cost.note || '') : ''}"
@@ -310,35 +286,19 @@ function showCostModal(cost, defaultGroupKey, onSave) {
   document.getElementById('modal-cancel').onclick = () => Modal.close();
   document.getElementById('c-name').focus();
 
-  // —— 可變/固定切換 ——
+  // 可變/固定切換
   function updateTypeToggle(type) {
     activeCostType = type;
-    const vBtn = document.getElementById('toggle-variable');
-    const fBtn = document.getElementById('toggle-fixed');
-    const hint = document.getElementById('cost-type-hint');
-    vBtn.className = type === 'variable' ? 'active-variable' : '';
-    fBtn.className = type === 'fixed'    ? 'active-fixed'    : '';
-    hint.textContent = type === 'variable'
-      ? '📊 隨生產數量變動的成本（原料、人工、廣告等）'
+    document.getElementById('toggle-variable').className = type === 'variable' ? 'active-variable' : '';
+    document.getElementById('toggle-fixed').className    = type === 'fixed'    ? 'active-fixed'    : '';
+    document.getElementById('cost-type-hint').textContent = type === 'variable'
+      ? '📊 隨生產數量變動的成本（原料、人工等）'
       : '📌 不隨數量變動的固定支出，納入損益平衡點計算';
   }
   document.getElementById('toggle-variable').onclick = () => updateTypeToggle('variable');
   document.getElementById('toggle-fixed').onclick    = () => updateTypeToggle('fixed');
 
-  // —— 分組 Tab 切換 ——
-  document.getElementById('group-tab-bar').addEventListener('click', (e) => {
-    const btn = e.target.closest('.group-tab-btn');
-    if (!btn) return;
-    activeGroupKey = btn.dataset.group;
-    // 更新 tab 樣式
-    document.querySelectorAll('.group-tab-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.group === activeGroupKey);
-    });
-    // 更新類別下拉
-    document.getElementById('c-cat').innerHTML = buildCategoryOptions(activeGroupKey, null);
-  });
-
-  // —— 表單送出 ——
+  // 表單送出
   document.getElementById('cost-form').onsubmit = async (e) => {
     e.preventDefault();
     const body = {

@@ -51,6 +51,14 @@ const api = {
     product: (pid) => request('GET', `/products/${pid}/analysis`),
     summary: ()    => request('GET', '/analysis/summary'),
   },
+
+  // 全域成本（Dashboard 管理）
+  globalCosts: {
+    list:   ()        => request('GET',    '/costs'),
+    create: (body)    => request('POST',   '/costs', body),
+    update: (id, b)   => request('PUT',    `/costs/${id}`, b),
+    delete: (id)      => request('DELETE', `/costs/${id}`),
+  },
 };
 
 window.api = api;

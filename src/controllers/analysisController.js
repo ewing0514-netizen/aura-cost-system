@@ -111,7 +111,28 @@ async function getSummary(req, res, next) {
       };
     });
 
-    res.json({ success: true, data: summary });
+    // 整體統計
+    const withMargin  = summary.filter(p => p.best_margin_pct != null);
+    const avgMargin   = withMargin.length > 0
+      ? withMargin.reduce((s, p) => s + p.best_margin_pct, 0) / withMargin.length
+      : null;
+    const highCount   = withMargin.filter(p => p.best_margin_pct >= 30).length;
+    const midCount    = withMargin.filter(p => p.best_margin_pct >= 10 && p.best_margin_pct < 30).length;
+    const lowCount    = withMargin.filter(p => p.best_margin_pct < 10).length;
+
+    res.json({
+      success: true,
+      data: {
+        products: summary,
+        stats: {
+          total: products.length,
+          avgMargin,
+          highCount,
+          midCount,
+          lowCount,
+        },
+      },
+    });
   } catch (err) {
     next(err);
   }
