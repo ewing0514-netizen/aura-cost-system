@@ -1,13 +1,24 @@
 const supabase = require('../config/database');
 const Joi = require('joi');
 
-const VALID_CATEGORIES = ['material', 'labor', 'packaging', 'fixed', 'other'];
+// 所有有效的成本子分類
+const VALID_CATEGORIES = [
+  // 產品成本
+  'material', 'labor', 'packaging',
+  // 營運成本
+  'rent', 'utilities', 'equipment', 'fixed',
+  // 行銷成本
+  'advertising', 'platform_fee', 'shipping_cost',
+  // 其他
+  'other',
+];
 
 const schema = Joi.object({
-  name: Joi.string().trim().min(1).max(255).required(),
-  amount: Joi.number().min(0).required(),
-  category: Joi.string().valid(...VALID_CATEGORIES).required(),
-  note: Joi.string().trim().allow('', null).optional(),
+  name:      Joi.string().trim().min(1).max(255).required(),
+  amount:    Joi.number().min(0).required(),
+  category:  Joi.string().valid(...VALID_CATEGORIES).required(),
+  cost_type: Joi.string().valid('variable', 'fixed').default('variable'),
+  note:      Joi.string().trim().allow('', null).optional(),
 });
 
 async function list(req, res, next) {
@@ -15,7 +26,7 @@ async function list(req, res, next) {
     const { productId } = req.params;
     const { data, error } = await supabase
       .from('cost_items')
-      .select('id, name, amount, category, note, created_at')
+      .select('id, name, amount, category, cost_type, note, created_at')
       .eq('product_id', productId)
       .order('category')
       .order('created_at');
@@ -35,7 +46,14 @@ async function create(req, res, next) {
 
     const { data, error } = await supabase
       .from('cost_items')
-      .insert({ product_id: productId, ...value, note: value.note || null })
+      .insert({
+        product_id: productId,
+        name:       value.name,
+        amount:     value.amount,
+        category:   value.category,
+        cost_type:  value.cost_type || 'variable',
+        note:       value.note || null,
+      })
       .select()
       .single();
 
@@ -54,7 +72,13 @@ async function update(req, res, next) {
 
     const { data, error } = await supabase
       .from('cost_items')
-      .update({ ...value, note: value.note || null })
+      .update({
+        name:      value.name,
+        amount:    value.amount,
+        category:  value.category,
+        cost_type: value.cost_type || 'variable',
+        note:      value.note || null,
+      })
       .eq('id', costId)
       .eq('product_id', productId)
       .select()

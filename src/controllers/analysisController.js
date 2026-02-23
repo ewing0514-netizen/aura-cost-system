@@ -23,25 +23,29 @@ async function getProductAnalysis(req, res, next) {
 
     if (vErr) throw vErr;
 
-    // 取得成本明細（各類別加總）
+    // 取得成本明細，使用 cost_type 計算可變/固定成本
     const { data: costItems, error: cErr } = await supabase
       .from('cost_items')
-      .select('amount, category')
+      .select('amount, category, cost_type')
       .eq('product_id', productId);
 
     if (cErr) throw cErr;
 
-    const costByCategory = {
-      material: 0, labor: 0, packaging: 0, fixed: 0, other: 0
-    };
-    let totalCost = 0;
-    for (const item of costItems) {
-      costByCategory[item.category] = (costByCategory[item.category] || 0) + parseFloat(item.amount);
-      totalCost += parseFloat(item.amount);
-    }
+    let totalCost    = 0;
+    let variableCost = 0;
+    let fixedCost    = 0;
+    const costByCategory = {};
 
-    const variableCost = costByCategory.material + costByCategory.labor + costByCategory.packaging + costByCategory.other;
-    const fixedCost = costByCategory.fixed;
+    for (const item of costItems) {
+      const amt = parseFloat(item.amount);
+      costByCategory[item.category] = (costByCategory[item.category] || 0) + amt;
+      totalCost += amt;
+      if (item.cost_type === 'fixed') {
+        fixedCost += amt;
+      } else {
+        variableCost += amt;
+      }
+    }
 
     const prices = rows.map(row => ({
       price_tier_id:     row.price_tier_id,

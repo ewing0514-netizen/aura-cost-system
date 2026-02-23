@@ -2,8 +2,9 @@ const supabase = require('../config/database');
 const Joi = require('joi');
 
 const schema = Joi.object({
-  name: Joi.string().trim().min(1).max(255).required(),
+  name:        Joi.string().trim().min(1).max(255).required(),
   description: Joi.string().trim().allow('', null).optional(),
+  cover_image: Joi.string().allow('', null).optional(),
 });
 
 async function list(req, res, next) {
@@ -11,7 +12,7 @@ async function list(req, res, next) {
     const { data, error } = await supabase
       .from('products')
       .select(`
-        id, name, description, is_active, created_at,
+        id, name, description, cover_image, is_active, created_at,
         cost_items(amount),
         price_tiers(id, is_active)
       `)
@@ -24,11 +25,12 @@ async function list(req, res, next) {
       const totalCost = p.cost_items.reduce((sum, c) => sum + parseFloat(c.amount), 0);
       const activePriceCount = p.price_tiers.filter(pt => pt.is_active).length;
       return {
-        id: p.id,
-        name: p.name,
+        id:          p.id,
+        name:        p.name,
         description: p.description,
-        created_at: p.created_at,
-        total_cost: totalCost,
+        cover_image: p.cover_image,
+        created_at:  p.created_at,
+        total_cost:  totalCost,
         price_count: activePriceCount,
       };
     });
@@ -44,7 +46,7 @@ async function get(req, res, next) {
     const { id } = req.params;
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, description, is_active, created_at, updated_at')
+      .select('id, name, description, cover_image, is_active, created_at, updated_at')
       .eq('id', id)
       .single();
 
@@ -65,7 +67,11 @@ async function create(req, res, next) {
 
     const { data, error } = await supabase
       .from('products')
-      .insert({ name: value.name, description: value.description || null })
+      .insert({
+        name:        value.name,
+        description: value.description || null,
+        cover_image: value.cover_image || null,
+      })
       .select()
       .single();
 
@@ -82,9 +88,18 @@ async function update(req, res, next) {
     const { error: valErr, value } = schema.validate(req.body);
     if (valErr) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: valErr.message } });
 
+    const payload = {
+      name:        value.name,
+      description: value.description || null,
+    };
+    // 只有明確傳入 cover_image 才更新（允許傳 null 來移除圖片）
+    if ('cover_image' in req.body) {
+      payload.cover_image = value.cover_image || null;
+    }
+
     const { data, error } = await supabase
       .from('products')
-      .update({ name: value.name, description: value.description || null })
+      .update(payload)
       .eq('id', id)
       .select()
       .single();

@@ -1,46 +1,76 @@
 /* 自定義樣式補充 Tailwind */
 [x-cloak] { display: none !important; }
 
+/* ===== Tab 樣式 ===== */
 .tab-active {
   border-bottom: 2px solid #6366f1;
   color: #6366f1;
   font-weight: 600;
 }
-
 .tab-inactive {
   border-bottom: 2px solid transparent;
   color: #6b7280;
 }
-
 .tab-inactive:hover {
   color: #374151;
   border-bottom-color: #d1d5db;
 }
 
+/* ===== Category Badges（加 white-space:nowrap 避免斷行）===== */
 .category-badge {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 9999px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.6;
 }
 
+/* 產品成本 */
 .category-material  { background: #dcfce7; color: #166534; }
 .category-labor     { background: #dbeafe; color: #1e40af; }
 .category-packaging { background: #fef9c3; color: #854d0e; }
+
+/* 營運成本 */
+.category-rent      { background: #ede9fe; color: #5b21b6; }
+.category-utilities { background: #cffafe; color: #164e63; }
+.category-equipment { background: #fef3c7; color: #92400e; }
 .category-fixed     { background: #fce7f3; color: #9d174d; }
+
+/* 行銷成本 */
+.category-advertising  { background: #ffe4e6; color: #9f1239; }
+.category-platform_fee { background: #fae8ff; color: #7e22ce; }
+.category-shipping_cost{ background: #d1fae5; color: #065f46; }
+
+/* 其他 */
 .category-other     { background: #f3f4f6; color: #374151; }
 
+/* ===== 可變/固定成本 Badge ===== */
+.cost-type-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.cost-type-variable { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.cost-type-fixed    { background: #fdf2f8; color: #9d174d; border: 1px solid #fbcfe8; }
+
+/* ===== 售價 Badges ===== */
 .price-normal    { background: #ede9fe; color: #5b21b6; }
 .price-promotion { background: #fee2e2; color: #991b1b; }
 .price-group     { background: #d1fae5; color: #065f46; }
 .price-member    { background: #fef3c7; color: #92400e; }
 .price-custom    { background: #f3f4f6; color: #374151; }
 
+/* ===== 損益顏色 ===== */
 .profit-positive { color: #059669; }
 .profit-negative { color: #dc2626; }
 
-/* 損益平衡進度條 */
+/* ===== 損益平衡進度條 ===== */
 .breakeven-bar {
   height: 8px;
   border-radius: 4px;
@@ -53,7 +83,7 @@
   transition: width 0.5s ease;
 }
 
-/* Toast 通知 */
+/* ===== Toast 通知 ===== */
 #toast-container {
   position: fixed;
   top: 1rem;
@@ -63,7 +93,6 @@
   flex-direction: column;
   gap: 0.5rem;
 }
-
 .toast {
   padding: 0.75rem 1.25rem;
   border-radius: 0.5rem;
@@ -73,7 +102,6 @@
   animation: slideIn 0.3s ease;
   min-width: 200px;
 }
-
 .toast-success { background: #059669; }
 .toast-error   { background: #dc2626; }
 .toast-info    { background: #6366f1; }
@@ -83,30 +111,31 @@
   to   { transform: translateX(0);    opacity: 1; }
 }
 
-/* Modal */
+/* ===== Modal ===== */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
 }
-
 .modal-box {
   background: white;
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   padding: 1.5rem;
   width: 100%;
-  max-width: 480px;
+  max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 }
 
-/* Loading spinner */
+/* ===== Loading Spinner ===== */
 .spinner {
   display: inline-block;
   width: 1.25rem;
@@ -116,20 +145,186 @@
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
-
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-/* 表格 hover */
+/* ===== 表格 hover ===== */
 tr:hover td { background: #f9fafb; }
 
-/* 卡片 hover */
+/* ===== 產品卡片 ===== */
 .product-card {
   transition: box-shadow 0.2s, transform 0.2s;
   cursor: pointer;
 }
 .product-card:hover {
-  box-shadow: 0 4px 20px rgba(99,102,241,0.15);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(99,102,241,0.18);
+  transform: translateY(-3px);
+}
+
+/* ===== Apple Liquid Glass 成本分組卡片 ===== */
+.cost-group-card {
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+
+/* 產品成本 — 藍色調 */
+.group-product {
+  background: linear-gradient(135deg,
+    rgba(219, 234, 254, 0.72) 0%,
+    rgba(207, 250, 254, 0.60) 100%);
+  border-color: rgba(147, 197, 253, 0.55);
+  box-shadow:
+    0 8px 32px rgba(59, 130, 246, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80),
+    inset 0 -1px 0 rgba(59, 130, 246, 0.06);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+.group-product:hover {
+  box-shadow:
+    0 12px 40px rgba(59, 130, 246, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* 營運成本 — 紫色調 */
+.group-operations {
+  background: linear-gradient(135deg,
+    rgba(237, 233, 254, 0.72) 0%,
+    rgba(233, 213, 255, 0.60) 100%);
+  border-color: rgba(167, 139, 250, 0.45);
+  box-shadow:
+    0 8px 32px rgba(124, 58, 237, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80),
+    inset 0 -1px 0 rgba(124, 58, 237, 0.06);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+.group-operations:hover {
+  box-shadow:
+    0 12px 40px rgba(124, 58, 237, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* 行銷成本 — 玫瑰/粉色調 */
+.group-marketing {
+  background: linear-gradient(135deg,
+    rgba(252, 231, 243, 0.72) 0%,
+    rgba(255, 228, 230, 0.60) 100%);
+  border-color: rgba(249, 168, 212, 0.55);
+  box-shadow:
+    0 8px 32px rgba(236, 72, 153, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80),
+    inset 0 -1px 0 rgba(236, 72, 153, 0.05);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+.group-marketing:hover {
+  box-shadow:
+    0 12px 40px rgba(236, 72, 153, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* 其他成本 — 灰色調 */
+.group-other {
+  background: linear-gradient(135deg,
+    rgba(248, 250, 252, 0.80) 0%,
+    rgba(241, 245, 249, 0.72) 100%);
+  border-color: rgba(203, 213, 225, 0.65);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+/* 成本列 — 毛玻璃行 */
+.cost-row-glass {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  transition: background 0.15s;
+}
+.cost-row-glass:hover {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+/* 可變/固定切換 Toggle */
+.cost-type-toggle {
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 4px;
+  display: flex;
+  gap: 4px;
+}
+.cost-type-toggle button {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 9px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s;
+  color: #6b7280;
+  background: transparent;
+}
+.cost-type-toggle button.active-variable {
+  background: white;
+  color: #1d4ed8;
+  box-shadow: 0 1px 6px rgba(29, 78, 216, 0.16), 0 1px 2px rgba(0,0,0,0.08);
+}
+.cost-type-toggle button.active-fixed {
+  background: white;
+  color: #9d174d;
+  box-shadow: 0 1px 6px rgba(157, 23, 77, 0.14), 0 1px 2px rgba(0,0,0,0.08);
+}
+
+/* 成本分組 Tabs（Modal 內） */
+.group-tab-bar {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 4px;
+  gap: 2px;
+}
+.group-tab-btn {
+  flex: 1;
+  padding: 6px 4px;
+  border-radius: 9px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+.group-tab-btn.active {
+  background: white;
+  color: #111827;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+}
+
+/* 封面圖片上傳區域 */
+.cover-upload-zone {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: #f9fafb;
+}
+.cover-upload-zone:hover {
+  border-color: #818cf8;
+  background: #f0f0ff;
 }

@@ -24,9 +24,9 @@ async function renderProductDetail(productId) {
       <!-- Tabs -->
       <div class="border-b border-gray-200 mb-6">
         <nav class="flex gap-6">
-          <button class="tab-btn pb-3 text-sm tab-active"    data-tab="costs">成本項目</button>
-          <button class="tab-btn pb-3 text-sm tab-inactive"  data-tab="prices">售價設定</button>
-          <button class="tab-btn pb-3 text-sm tab-inactive"  data-tab="analysis">損益分析</button>
+          <button class="tab-btn pb-3 text-sm tab-active"   data-tab="costs">成本項目</button>
+          <button class="tab-btn pb-3 text-sm tab-inactive" data-tab="prices">售價設定</button>
+          <button class="tab-btn pb-3 text-sm tab-inactive" data-tab="analysis">損益分析</button>
         </nav>
       </div>
 
@@ -76,102 +76,61 @@ async function loadTab(tab) {
   }
 }
 
-// ========== 成本項目 Tab ==========
+// =====================================================
+// 成本項目 Tab — Liquid Glass 分組設計
+// =====================================================
 
 async function renderCostsTab(container) {
   const costs = await api.costs.list(currentProductId);
-
-  // 依類別分組
-  const grouped = {};
-  for (const c of costs) {
-    if (!grouped[c.category]) grouped[c.category] = [];
-    grouped[c.category].push(c);
-  }
-
   const total = costs.reduce((s, c) => s + parseFloat(c.amount), 0);
 
+  // 將成本依分組歸類
+  const grouped = {};
+  for (const groupKey of Object.keys(COST_GROUPS)) grouped[groupKey] = [];
+  for (const c of costs) {
+    const gk = CATEGORY_TO_GROUP[c.category] || 'other';
+    grouped[gk].push(c);
+  }
+
   container.innerHTML = `
-    <div class="flex justify-between items-center mb-4">
+    <div class="flex justify-between items-center mb-5">
       <div>
         <span class="text-sm text-gray-500">共 ${costs.length} 項成本</span>
         <span class="mx-2 text-gray-300">|</span>
-        <span class="text-sm font-medium text-gray-900">總計 ${formatMoney(total)}</span>
+        <span class="text-sm font-semibold text-gray-900">總計 ${formatMoney(total)}</span>
       </div>
-      <button id="btn-add-cost" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-700">+ 新增成本</button>
+      <button id="btn-add-cost" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-700 flex items-center gap-1">
+        + 新增成本
+      </button>
     </div>
 
-    ${costs.length === 0 ? `
-      <div class="text-center py-12 text-gray-400">
-        <div class="text-4xl mb-3">💰</div>
-        <p>還沒有成本項目</p>
-        <p class="text-sm mt-1">點擊「新增成本」開始記錄</p>
-      </div>
-    ` : `
-      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table class="w-full text-sm">
-          <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
-            <tr>
-              <th class="text-left px-4 py-3 font-medium">類別</th>
-              <th class="text-left px-4 py-3 font-medium">名稱</th>
-              <th class="text-right px-4 py-3 font-medium">金額</th>
-              <th class="text-left px-4 py-3 font-medium">備註</th>
-              <th class="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            ${costs.map(c => `
-              <tr>
-                <td class="px-4 py-3">
-                  <span class="category-badge category-${c.category}">${categoryLabel(c.category)}</span>
-                </td>
-                <td class="px-4 py-3 text-gray-900">${escapeHtml(c.name)}</td>
-                <td class="px-4 py-3 text-right font-medium text-gray-900">${formatMoney(c.amount)}</td>
-                <td class="px-4 py-3 text-gray-400 text-xs">${escapeHtml(c.note || '')}</td>
-                <td class="px-4 py-3 text-right whitespace-nowrap">
-                  <button class="cost-edit text-gray-400 hover:text-indigo-600 mr-2" data-id="${c.id}" data-name="${escapeHtml(c.name)}" data-amount="${c.amount}" data-cat="${c.category}" data-note="${escapeHtml(c.note||'')}">編輯</button>
-                  <button class="cost-del text-gray-400 hover:text-red-600" data-id="${c.id}" data-name="${escapeHtml(c.name)}">刪除</button>
-                </td>
-              </tr>
-            `).join('')}
-            <tr class="bg-gray-50">
-              <td colspan="2" class="px-4 py-3 font-semibold text-gray-900">合計</td>
-              <td class="px-4 py-3 text-right font-bold text-gray-900">${formatMoney(total)}</td>
-              <td colspan="2"></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- 類別小計 -->
-      <div class="mt-4 grid grid-cols-2 md:grid-cols-5 gap-2">
-        ${Object.entries(CATEGORY_LABELS).map(([key, label]) => {
-          const amt = costs.filter(c => c.category === key).reduce((s, c) => s + parseFloat(c.amount), 0);
-          if (amt === 0) return '';
-          return `<div class="bg-white border border-gray-200 rounded-lg px-3 py-2 text-center">
-            <div class="text-xs text-gray-500">${label}</div>
-            <div class="font-medium text-sm text-gray-900 mt-0.5">${formatMoney(amt)}</div>
-          </div>`;
-        }).join('')}
-      </div>
-    `}
+    <div class="space-y-4">
+      ${Object.entries(COST_GROUPS).map(([groupKey, group]) =>
+        renderCostGroupCard(groupKey, group, grouped[groupKey] || [])
+      ).join('')}
+    </div>
   `;
 
-  document.getElementById('btn-add-cost').onclick = () => showCostModal(null, () => loadTab('costs'));
+  // 全域新增按鈕（不限定分組）
+  document.getElementById('btn-add-cost').onclick = () =>
+    showCostModal(null, null, () => loadTab('costs'));
 
-  container.querySelectorAll('.cost-edit').forEach(btn => {
+  // 各分組新增按鈕
+  Object.keys(COST_GROUPS).forEach(groupKey => {
+    const btn = document.getElementById(`btn-group-add-${groupKey}`);
+    if (btn) btn.onclick = () => showCostModal(null, groupKey, () => loadTab('costs'));
+  });
+
+  // 編輯按鈕
+  container.querySelectorAll('.cost-edit-btn').forEach(btn => {
     btn.onclick = () => {
-      const cost = {
-        id: btn.dataset.id,
-        name: btn.dataset.name,
-        amount: parseFloat(btn.dataset.amount),
-        category: btn.dataset.cat,
-        note: btn.dataset.note,
-      };
-      showCostModal(cost, () => loadTab('costs'));
+      const cost = JSON.parse(btn.dataset.cost);
+      showCostModal(cost, null, () => loadTab('costs'));
     };
   });
 
-  container.querySelectorAll('.cost-del').forEach(btn => {
+  // 刪除按鈕
+  container.querySelectorAll('.cost-del-btn').forEach(btn => {
     btn.onclick = async () => {
       const ok = await confirm(`確定要刪除「${btn.dataset.name}」成本項目？`);
       if (!ok) return;
@@ -186,37 +145,158 @@ async function renderCostsTab(container) {
   });
 }
 
-function showCostModal(cost, onSave) {
+function renderCostGroupCard(groupKey, group, costs) {
+  const total = costs.reduce((s, c) => s + parseFloat(c.amount), 0);
+
+  return `
+    <div class="cost-group-card ${group.colorClass} p-4">
+      <!-- 分組標題列 -->
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">${group.icon}</span>
+          <div>
+            <span class="font-semibold text-sm ${group.textColor}">${group.label}</span>
+            <p class="text-xs text-gray-400 mt-0.5 hidden sm:block">${group.desc}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <span class="text-sm font-bold ${group.textColor}">${formatMoney(total)}</span>
+          <button id="btn-group-add-${groupKey}"
+            class="text-xs px-2.5 py-1 rounded-full text-white transition-opacity ${group.btnClass}">
+            + 新增
+          </button>
+        </div>
+      </div>
+
+      <!-- 成本列表 -->
+      ${costs.length === 0
+        ? `<div class="text-center py-5 text-xs ${group.emptyColor}">尚未有${group.label}項目，點擊「+ 新增」開始記錄</div>`
+        : `<div class="space-y-2">
+             ${costs.map(c => `
+               <div class="cost-row-glass flex items-center gap-3 px-3 py-2.5">
+                 <div class="flex-1 min-w-0">
+                   <div class="flex items-center gap-1.5 flex-wrap">
+                     <span class="text-sm font-medium text-gray-900">${escapeHtml(c.name)}</span>
+                     <span class="category-badge category-${c.category}">${categoryLabel(c.category)}</span>
+                     <span class="cost-type-badge cost-type-${c.cost_type || 'variable'}">${c.cost_type === 'fixed' ? '固定' : '可變'}</span>
+                   </div>
+                   ${c.note ? `<div class="text-xs text-gray-400 mt-0.5 truncate">${escapeHtml(c.note)}</div>` : ''}
+                 </div>
+                 <span class="text-sm font-bold text-gray-900 whitespace-nowrap">${formatMoney(c.amount)}</span>
+                 <div class="flex gap-0.5 flex-shrink-0">
+                   <button class="cost-edit-btn text-gray-400 hover:text-indigo-600 text-xs px-2 py-1 rounded-lg hover:bg-white/60"
+                     data-cost='${JSON.stringify({
+                       id: c.id, name: c.name,
+                       amount: parseFloat(c.amount),
+                       category: c.category,
+                       cost_type: c.cost_type || 'variable',
+                       note: c.note || ''
+                     })}'>編輯</button>
+                   <button class="cost-del-btn text-gray-400 hover:text-red-500 text-xs px-2 py-1 rounded-lg hover:bg-white/60"
+                     data-id="${c.id}" data-name="${escapeHtml(c.name)}">刪除</button>
+                 </div>
+               </div>
+             `).join('')}
+           </div>`
+      }
+    </div>
+  `;
+}
+
+// =====================================================
+// 新增/編輯成本 Modal
+// =====================================================
+
+function showCostModal(cost, defaultGroupKey, onSave) {
   const isEdit = !!cost;
+
+  // 初始狀態
+  let activeCostType = cost ? (cost.cost_type || 'variable') : 'variable';
+  let activeGroupKey = defaultGroupKey
+    || (cost ? (CATEGORY_TO_GROUP[cost.category] || 'product') : 'product');
+
+  // 依分組產生 <optgroup> 下拉選單
+  function buildCategoryOptions(forGroupKey, selectedCat) {
+    const cats = COST_GROUPS[forGroupKey]?.categories || [];
+    const effective = (selectedCat && cats.includes(selectedCat)) ? selectedCat : cats[0];
+    return cats.map(v =>
+      `<option value="${v}" ${effective === v ? 'selected' : ''}>${CATEGORY_LABELS[v] || v}</option>`
+    ).join('');
+  }
+
+  // 分組 Tab 按鈕 HTML
+  function buildGroupTabs(currentKey) {
+    return Object.entries(COST_GROUPS).map(([key, g]) => `
+      <button type="button" class="group-tab-btn ${key === currentKey ? 'active' : ''}" data-group="${key}">
+        ${g.icon} ${g.label}
+      </button>
+    `).join('');
+  }
+
   const html = `
     <h3 class="text-lg font-semibold mb-4">${isEdit ? '編輯成本項目' : '新增成本項目'}</h3>
     <form id="cost-form">
+
+      <!-- ① 可變成本 / 固定成本 切換 -->
+      <div class="mb-4">
+        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">成本類型</label>
+        <div class="cost-type-toggle">
+          <button type="button" id="toggle-variable"
+            class="${activeCostType === 'variable' ? 'active-variable' : ''}">
+            📈 可變成本
+          </button>
+          <button type="button" id="toggle-fixed"
+            class="${activeCostType === 'fixed' ? 'active-fixed' : ''}">
+            🏛️ 固定成本
+          </button>
+        </div>
+        <p id="cost-type-hint" class="text-xs text-gray-400 mt-1.5 px-0.5">
+          ${activeCostType === 'variable'
+            ? '📊 隨生產數量變動的成本（原料、人工、廣告等）'
+            : '📌 不隨數量變動的固定支出，納入損益平衡點計算'}
+        </p>
+      </div>
+
+      <!-- ② 成本分組 Tab -->
+      <div class="mb-3">
+        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">成本分組</label>
+        <div class="group-tab-bar" id="group-tab-bar">
+          ${buildGroupTabs(activeGroupKey)}
+        </div>
+      </div>
+
+      <!-- ③ 子分類下拉 -->
       <div class="mb-3">
         <label class="block text-sm font-medium text-gray-700 mb-1">類別 <span class="text-red-500">*</span></label>
         <select id="c-cat" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          ${Object.entries(CATEGORY_LABELS).map(([v, l]) =>
-            `<option value="${v}" ${isEdit && cost.category === v ? 'selected' : ''}>${l}</option>`
-          ).join('')}
+          ${buildCategoryOptions(activeGroupKey, cost?.category)}
         </select>
       </div>
+
+      <!-- ④ 名稱 -->
       <div class="mb-3">
-        <label class="block text-sm font-medium text-gray-700 mb-1">名稱 <span class="text-red-500">*</span></label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">項目名稱 <span class="text-red-500">*</span></label>
         <input type="text" id="c-name" value="${isEdit ? escapeHtml(cost.name) : ''}"
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          placeholder="例如：皂基、製作工時" required>
+          placeholder="例如：皂基、製作工時、FB 廣告費" required>
       </div>
+
+      <!-- ⑤ 金額 -->
       <div class="mb-3">
         <label class="block text-sm font-medium text-gray-700 mb-1">金額（NT$）<span class="text-red-500">*</span></label>
         <input type="number" id="c-amount" value="${isEdit ? cost.amount : ''}" min="0" step="0.01"
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           placeholder="0.00" required>
       </div>
+
+      <!-- ⑥ 備註 -->
       <div class="mb-5">
         <label class="block text-sm font-medium text-gray-700 mb-1">備註（選填）</label>
         <input type="text" id="c-note" value="${isEdit ? escapeHtml(cost.note || '') : ''}"
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          placeholder="例如：每批 100g 所需用量">
+          placeholder="例如：每批 100g 用量">
       </div>
+
       <div class="flex justify-end gap-2">
         <button type="button" id="modal-cancel" class="px-4 py-2 rounded-lg border text-gray-700 hover:bg-gray-50 text-sm">取消</button>
         <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm font-medium">
@@ -225,17 +305,48 @@ function showCostModal(cost, onSave) {
       </div>
     </form>
   `;
+
   Modal.show(html);
   document.getElementById('modal-cancel').onclick = () => Modal.close();
   document.getElementById('c-name').focus();
 
+  // —— 可變/固定切換 ——
+  function updateTypeToggle(type) {
+    activeCostType = type;
+    const vBtn = document.getElementById('toggle-variable');
+    const fBtn = document.getElementById('toggle-fixed');
+    const hint = document.getElementById('cost-type-hint');
+    vBtn.className = type === 'variable' ? 'active-variable' : '';
+    fBtn.className = type === 'fixed'    ? 'active-fixed'    : '';
+    hint.textContent = type === 'variable'
+      ? '📊 隨生產數量變動的成本（原料、人工、廣告等）'
+      : '📌 不隨數量變動的固定支出，納入損益平衡點計算';
+  }
+  document.getElementById('toggle-variable').onclick = () => updateTypeToggle('variable');
+  document.getElementById('toggle-fixed').onclick    = () => updateTypeToggle('fixed');
+
+  // —— 分組 Tab 切換 ——
+  document.getElementById('group-tab-bar').addEventListener('click', (e) => {
+    const btn = e.target.closest('.group-tab-btn');
+    if (!btn) return;
+    activeGroupKey = btn.dataset.group;
+    // 更新 tab 樣式
+    document.querySelectorAll('.group-tab-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.group === activeGroupKey);
+    });
+    // 更新類別下拉
+    document.getElementById('c-cat').innerHTML = buildCategoryOptions(activeGroupKey, null);
+  });
+
+  // —— 表單送出 ——
   document.getElementById('cost-form').onsubmit = async (e) => {
     e.preventDefault();
     const body = {
-      name: document.getElementById('c-name').value.trim(),
-      amount: parseFloat(document.getElementById('c-amount').value),
-      category: document.getElementById('c-cat').value,
-      note: document.getElementById('c-note').value.trim(),
+      name:      document.getElementById('c-name').value.trim(),
+      amount:    parseFloat(document.getElementById('c-amount').value),
+      category:  document.getElementById('c-cat').value,
+      cost_type: activeCostType,
+      note:      document.getElementById('c-note').value.trim(),
     };
     try {
       if (isEdit) {
@@ -253,7 +364,9 @@ function showCostModal(cost, onSave) {
   };
 }
 
-// ========== 售價設定 Tab ==========
+// =====================================================
+// 售價設定 Tab
+// =====================================================
 
 async function renderPricesTab(container) {
   const prices = await api.prices.list(currentProductId);
@@ -380,11 +493,11 @@ function showPriceModal(price, onSave) {
   document.getElementById('price-form').onsubmit = async (e) => {
     e.preventDefault();
     const body = {
-      name: document.getElementById('p-name').value.trim(),
-      amount: parseFloat(document.getElementById('p-amount').value),
+      name:       document.getElementById('p-name').value.trim(),
+      amount:     parseFloat(document.getElementById('p-amount').value),
       price_type: document.getElementById('p-type').value,
-      note: document.getElementById('p-note').value.trim(),
-      is_active: document.getElementById('p-active').checked,
+      note:       document.getElementById('p-note').value.trim(),
+      is_active:  document.getElementById('p-active').checked,
     };
     try {
       if (isEdit) {
@@ -402,14 +515,14 @@ function showPriceModal(price, onSave) {
   };
 }
 
-// ========== 損益分析 Tab ==========
+// =====================================================
+// 損益分析 Tab
+// =====================================================
 
 async function renderAnalysisTab(container) {
   const data = await api.analysis.product(currentProductId);
 
-  const {
-    total_cost, variable_cost, fixed_cost, cost_breakdown, prices
-  } = data;
+  const { total_cost, variable_cost, fixed_cost, prices } = data;
 
   if (prices.length === 0) {
     container.innerHTML = `
@@ -433,7 +546,7 @@ async function renderAnalysisTab(container) {
       <div class="bg-white border border-gray-200 rounded-xl p-4">
         <div class="text-xs text-gray-500 mb-1">可變成本</div>
         <div class="text-lg font-bold text-blue-600">${formatMoney(variable_cost)}</div>
-        <div class="text-xs text-gray-400 mt-0.5">原料+人工+包裝</div>
+        <div class="text-xs text-gray-400 mt-0.5">隨數量變動</div>
       </div>
       <div class="bg-white border border-gray-200 rounded-xl p-4">
         <div class="text-xs text-gray-500 mb-1">固定成本</div>
