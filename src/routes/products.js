@@ -10,6 +10,7 @@ router.get('/:id',  products.get);
 router.post('/',    products.create);
 router.put('/:id',  products.update);
 router.delete('/:id', products.remove);
+router.post('/:id/duplicate', products.duplicate);
 
 // 成本項目（巢狀路由）
 router.get('/:productId/costs',              costItems.list);

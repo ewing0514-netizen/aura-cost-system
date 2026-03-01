@@ -23,11 +23,12 @@ async function request(method, path, body) {
 const api = {
   // 產品
   products: {
-    list:   ()       => request('GET',    '/products'),
-    get:    (id)     => request('GET',    `/products/${id}`),
-    create: (body)   => request('POST',   '/products', body),
-    update: (id, b)  => request('PUT',    `/products/${id}`, b),
-    delete: (id)     => request('DELETE', `/products/${id}`),
+    list:      ()       => request('GET',    '/products'),
+    get:       (id)     => request('GET',    `/products/${id}`),
+    create:    (body)   => request('POST',   '/products', body),
+    update:    (id, b)  => request('PUT',    `/products/${id}`, b),
+    delete:    (id)     => request('DELETE', `/products/${id}`),
+    duplicate: (id)     => request('POST',   `/products/${id}/duplicate`),
   },
 
   // 成本項目
