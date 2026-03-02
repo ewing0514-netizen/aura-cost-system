@@ -16,8 +16,17 @@ app.use(express.json({ limit: '5mb' })); // 支援 base64 封面圖片
 // API 路由
 app.use('/api/v1', routes);
 
-// 前端靜態檔案
-app.use(express.static(path.join(__dirname, '../public')));
+// 前端靜態檔案（JS/CSS/圖片 快取 7 天，index.html 不快取）
+app.use(express.static(path.join(__dirname, '../public'), {
+  maxAge: '7d',
+  etag: true,
+  setHeaders(res, filePath) {
+    // SPA 入口不快取，確保每次都拿到最新版本
+    if (filePath.endsWith('index.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  },
+}));
 
 // SPA fallback（所有非 API 請求都回傳 index.html）
 app.get('*', (req, res) => {

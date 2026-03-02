@@ -5,11 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Aúra 成本系統</title>
 
+  <!-- DNS 預連線：加速 CDN 資源載入 -->
+  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Chart.js：延遲載入（僅損益總覽頁使用，由 analysisSummary.js 動態引入）-->
 
   <!-- 自訂樣式 -->
   <link rel="stylesheet" href="/css/main.css">
@@ -55,12 +60,12 @@
   <!-- Toast 通知容器 -->
   <div id="toast-container"></div>
 
-  <!-- JavaScript -->
-  <script src="/js/api.js"></script>
-  <script src="/js/utils.js"></script>
-  <script src="/js/pages/productList.js"></script>
-  <script src="/js/pages/productDetail.js"></script>
-  <script src="/js/pages/analysisSummary.js"></script>
-  <script src="/js/router.js"></script>
+  <!-- JavaScript（defer：非阻塞載入，DOMContentLoaded 後依序執行）-->
+  <script defer src="/js/api.js"></script>
+  <script defer src="/js/utils.js"></script>
+  <script defer src="/js/pages/productList.js"></script>
+  <script defer src="/js/pages/productDetail.js"></script>
+  <script defer src="/js/pages/analysisSummary.js"></script>
+  <script defer src="/js/router.js"></script>
 </body>
 </html>

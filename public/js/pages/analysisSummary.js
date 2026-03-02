@@ -1,5 +1,17 @@
 // 頁面 3：損益總覽（整體利潤率分析）
 
+// ===== Chart.js 延遲載入（首次進入損益頁才下載，節省首屏載入時間）=====
+function loadChartJs() {
+  return new Promise((resolve, reject) => {
+    if (window.Chart) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+    s.onload  = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
 async function renderAnalysisSummary() {
   const main = document.getElementById('app');
   main.innerHTML = `
@@ -25,7 +37,11 @@ async function renderAnalysisSummary() {
   document.getElementById('btn-back').onclick = () => { window.location.hash = '#/'; };
 
   try {
-    const result = await api.analysis.summary();
+    // 並行：資料請求 + Chart.js 延遲載入（兩者同步完成，不互相阻塞）
+    const [result] = await Promise.all([
+      api.analysis.summary(),
+      loadChartJs(),
+    ]);
     const { products: summary, stats } = result;
     const container = document.getElementById('summary-content');
 

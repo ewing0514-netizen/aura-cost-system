@@ -1,6 +1,16 @@
 /* 自定義樣式補充 Tailwind */
 [x-cloak] { display: none !important; }
 
+/* ===== 全域字體大小提升（易讀性）===== */
+html {
+  font-size: 106.25%; /* 16px → ~17px，所有 rem 單位等比例放大 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body {
+  letter-spacing: -0.01em;
+}
+
 /* ===== Tab 樣式 ===== */
 .tab-active {
   border-bottom: 2px solid #6366f1;
@@ -19,9 +29,9 @@
 /* ===== Category Badges（加 white-space:nowrap 避免斷行）===== */
 .category-badge {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 2px 9px;
   border-radius: 9999px;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 500;
   white-space: nowrap;
   line-height: 1.6;
@@ -51,7 +61,7 @@
   display: inline-block;
   padding: 1px 7px;
   border-radius: 9999px;
-  font-size: 0.68rem;
+  font-size: 0.73rem;
   font-weight: 600;
   white-space: nowrap;
   line-height: 1.6;
@@ -94,10 +104,11 @@
   gap: 0.5rem;
 }
 .toast {
-  padding: 0.75rem 1.25rem;
+  padding: 0.8rem 1.35rem;
   border-radius: 0.5rem;
   color: white;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
+  font-weight: 500;
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
   animation: slideIn 0.3s ease;
   min-width: 200px;
@@ -300,7 +311,7 @@ tr:hover td { background: #f9fafb; }
   flex: 1;
   padding: 6px 4px;
   border-radius: 9px;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 500;
   text-align: center;
   cursor: pointer;

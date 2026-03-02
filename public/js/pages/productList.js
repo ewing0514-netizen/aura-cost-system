@@ -381,7 +381,7 @@ function renderProductCard(p) {
     <div id="card-${p.id}" class="product-card bg-white border border-gray-200 rounded-xl overflow-hidden relative">
       ${hasCover
         ? `<div class="w-full overflow-hidden" style="aspect-ratio:1200/628">
-             <img src="${p.cover_image}" alt="${escapeHtml(p.name)}" class="w-full h-full object-cover">
+             <img src="${p.cover_image}" alt="${escapeHtml(p.name)}" class="w-full h-full object-cover" loading="lazy" decoding="async">
            </div>`
         : `<div class="w-full flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50" style="aspect-ratio:1200/628">
              <span class="text-4xl opacity-40">📦</span>
