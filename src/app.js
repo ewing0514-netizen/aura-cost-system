@@ -16,13 +16,15 @@ app.use(express.json({ limit: '5mb' })); // 支援 base64 封面圖片
 // API 路由
 app.use('/api/v1', routes);
 
-// 前端靜態檔案（JS/CSS/圖片 快取 7 天，index.html 不快取）
+// 前端靜態檔案
+// 生產環境：JS/CSS/圖片 快取 7 天（Vercel 每次部署 URL 不同，自動 cache-bust）
+// 開發環境：不快取，確保修改立即生效
+const isProd = process.env.NODE_ENV === 'production';
 app.use(express.static(path.join(__dirname, '../public'), {
-  maxAge: '7d',
+  maxAge: isProd ? '7d' : 0,
   etag: true,
   setHeaders(res, filePath) {
-    // SPA 入口不快取，確保每次都拿到最新版本
-    if (filePath.endsWith('index.html')) {
+    if (!isProd || filePath.endsWith('index.html')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     }
   },
