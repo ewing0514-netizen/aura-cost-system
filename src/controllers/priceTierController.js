@@ -1,7 +1,7 @@
 const supabase = require('../config/database');
 const Joi = require('joi');
 
-const VALID_TYPES = ['normal', 'promotion', 'group', 'member', 'custom'];
+const VALID_TYPES = ['normal', 'promotion', 'group', 'member', 'suggested', 'custom'];
 
 const schema = Joi.object({
   name: Joi.string().trim().min(1).max(255).required(),

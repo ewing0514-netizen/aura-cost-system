@@ -25,6 +25,7 @@ CREATE TYPE price_type AS ENUM (
   'promotion',  -- 優惠價/活動價
   'group',      -- 團購價
   'member',     -- 會員價/分銷價
+  'suggested',  -- 建議售價（市場建議定價）
   'custom'      -- 自訂
 );
 

@@ -94,6 +94,7 @@ const PRICE_TYPE_LABELS = {
   promotion: '優惠價',
   group:     '團購價',
   member:    '會員價',
+  suggested: '建議售價',
   custom:    '自訂',
 };
 

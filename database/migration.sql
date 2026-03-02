@@ -23,7 +23,10 @@ ALTER TYPE cost_category ADD VALUE IF NOT EXISTS 'shipping_cost';
 ALTER TABLE products
   ADD COLUMN IF NOT EXISTS cover_image TEXT;
 
--- Step 5: 重建 View（改用 cost_type 欄位計算損益平衡點）
+-- Step 5: 新增 suggested 售價類型
+ALTER TYPE price_type ADD VALUE IF NOT EXISTS 'suggested';
+
+-- Step 6: 重建 View（改用 cost_type 欄位計算損益平衡點）
 DROP VIEW IF EXISTS product_price_analysis;
 
 CREATE VIEW product_price_analysis AS
