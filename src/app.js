@@ -16,16 +16,20 @@ app.use(express.json({ limit: '5mb' })); // 支援 base64 封面圖片
 // API 路由
 app.use('/api/v1', routes);
 
-// 前端靜態檔案
-// 生產環境：JS/CSS/圖片 快取 7 天（Vercel 每次部署 URL 不同，自動 cache-bust）
-// 開發環境：不快取，確保修改立即生效
-const isProd = process.env.NODE_ENV === 'production';
+// 前端靜態檔案快取策略：
+//   HTML          → no-store（永不快取，確保取得最新）
+//   JS / CSS      → no-cache（允許快取，但每次都向伺服器驗證 ETag，部署後立即生效）
+//   圖片 / 字型   → public, max-age=7d（內容不常變，長期快取）
 app.use(express.static(path.join(__dirname, '../public'), {
-  maxAge: isProd ? '7d' : 0,
   etag: true,
+  lastModified: true,
   setHeaders(res, filePath) {
-    if (!isProd || filePath.endsWith('index.html')) {
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-store');
+    } else if (/\.(js|css)$/.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=604800'); // 7 天
     }
   },
 }));
