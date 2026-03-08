@@ -14,11 +14,12 @@ const VALID_CATEGORIES = [
 ];
 
 const schema = Joi.object({
-  name:      Joi.string().trim().min(1).max(255).required(),
-  amount:    Joi.number().min(0).required(),
-  category:  Joi.string().valid(...VALID_CATEGORIES).required(),
-  cost_type: Joi.string().valid('variable', 'fixed').default('variable'),
-  note:      Joi.string().trim().allow('', null).optional(),
+  name:        Joi.string().trim().min(1).max(255).required(),
+  amount:      Joi.number().min(0).required(),
+  amount_type: Joi.string().valid('fixed', 'percentage').default('fixed'),
+  category:    Joi.string().valid(...VALID_CATEGORIES).required(),
+  cost_type:   Joi.string().valid('variable', 'fixed').default('variable'),
+  note:        Joi.string().trim().allow('', null).optional(),
 });
 
 async function list(req, res, next) {
@@ -26,7 +27,7 @@ async function list(req, res, next) {
     const { productId } = req.params;
     const { data, error } = await supabase
       .from('cost_items')
-      .select('id, name, amount, category, cost_type, note, created_at')
+      .select('id, name, amount, amount_type, category, cost_type, note, created_at')
       .eq('product_id', productId)
       .order('category')
       .order('created_at');
@@ -47,12 +48,13 @@ async function create(req, res, next) {
     const { data, error } = await supabase
       .from('cost_items')
       .insert({
-        product_id: productId,
-        name:       value.name,
-        amount:     value.amount,
-        category:   value.category,
-        cost_type:  value.cost_type || 'variable',
-        note:       value.note || null,
+        product_id:  productId,
+        name:        value.name,
+        amount:      value.amount,
+        amount_type: value.amount_type || 'fixed',
+        category:    value.category,
+        cost_type:   value.cost_type || 'variable',
+        note:        value.note || null,
       })
       .select()
       .single();
@@ -73,11 +75,12 @@ async function update(req, res, next) {
     const { data, error } = await supabase
       .from('cost_items')
       .update({
-        name:      value.name,
-        amount:    value.amount,
-        category:  value.category,
-        cost_type: value.cost_type || 'variable',
-        note:      value.note || null,
+        name:        value.name,
+        amount:      value.amount,
+        amount_type: value.amount_type || 'fixed',
+        category:    value.category,
+        cost_type:   value.cost_type || 'variable',
+        note:        value.note || null,
       })
       .eq('id', costId)
       .eq('product_id', productId)
@@ -118,18 +121,19 @@ const GLOBAL_CATEGORIES = [
 ];
 
 const globalSchema = Joi.object({
-  name:      Joi.string().trim().min(1).max(255).required(),
-  amount:    Joi.number().min(0).required(),
-  category:  Joi.string().valid(...GLOBAL_CATEGORIES).required(),
-  cost_type: Joi.string().valid('variable', 'fixed').default('fixed'),
-  note:      Joi.string().trim().allow('', null).optional(),
+  name:        Joi.string().trim().min(1).max(255).required(),
+  amount:      Joi.number().min(0).required(),
+  amount_type: Joi.string().valid('fixed', 'percentage').default('fixed'),
+  category:    Joi.string().valid(...GLOBAL_CATEGORIES).required(),
+  cost_type:   Joi.string().valid('variable', 'fixed').default('fixed'),
+  note:        Joi.string().trim().allow('', null).optional(),
 });
 
 async function listGlobal(req, res, next) {
   try {
     const { data, error } = await supabase
       .from('cost_items')
-      .select('id, name, amount, category, cost_type, note, created_at')
+      .select('id, name, amount, amount_type, category, cost_type, note, created_at')
       .is('product_id', null)
       .order('category')
       .order('created_at');
@@ -145,12 +149,13 @@ async function createGlobal(req, res, next) {
     const { data, error } = await supabase
       .from('cost_items')
       .insert({
-        product_id: null,
-        name:       value.name,
-        amount:     value.amount,
-        category:   value.category,
-        cost_type:  value.cost_type || 'fixed',
-        note:       value.note || null,
+        product_id:  null,
+        name:        value.name,
+        amount:      value.amount,
+        amount_type: value.amount_type || 'fixed',
+        category:    value.category,
+        cost_type:   value.cost_type || 'fixed',
+        note:        value.note || null,
       })
       .select()
       .single();
@@ -167,11 +172,12 @@ async function updateGlobal(req, res, next) {
     const { data, error } = await supabase
       .from('cost_items')
       .update({
-        name:      value.name,
-        amount:    value.amount,
-        category:  value.category,
-        cost_type: value.cost_type || 'fixed',
-        note:      value.note || null,
+        name:        value.name,
+        amount:      value.amount,
+        amount_type: value.amount_type || 'fixed',
+        category:    value.category,
+        cost_type:   value.cost_type || 'fixed',
+        note:        value.note || null,
       })
       .eq('id', costId)
       .is('product_id', null)

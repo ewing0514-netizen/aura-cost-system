@@ -160,7 +160,11 @@ async function loadGlobalCosts() {
 }
 
 function renderGlobalGroupCard(groupKey, group, costs) {
-  const total = costs.reduce((s, c) => s + parseFloat(c.amount), 0);
+  const fixedTotal = costs.filter(c => c.amount_type !== 'percentage').reduce((s, c) => s + parseFloat(c.amount), 0);
+  const pctTotal   = costs.filter(c => c.amount_type === 'percentage').reduce((s, c) => s + parseFloat(c.amount), 0);
+  const totalLabel = pctTotal > 0
+    ? `${formatMoney(fixedTotal)} + ${pctTotal.toFixed(1)}%`
+    : formatMoney(fixedTotal);
 
   return `
     <div class="cost-group-card ${group.colorClass} p-4">
@@ -173,7 +177,7 @@ function renderGlobalGroupCard(groupKey, group, costs) {
           </div>
         </div>
         <div class="flex items-center gap-3 flex-shrink-0">
-          <span class="text-sm font-bold ${group.textColor}">${formatMoney(total)}</span>
+          <span class="text-sm font-bold ${group.textColor}">${totalLabel}</span>
           <button id="btn-global-add-${groupKey}"
             class="text-xs px-2.5 py-1 rounded-full text-white transition-opacity ${group.btnClass}">
             + 新增
@@ -194,12 +198,13 @@ function renderGlobalGroupCard(groupKey, group, costs) {
                    </div>
                    ${c.note ? `<div class="text-xs text-gray-400 mt-0.5 truncate">${escapeHtml(c.note)}</div>` : ''}
                  </div>
-                 <span class="text-sm font-bold text-gray-900 whitespace-nowrap">${formatMoney(c.amount)}</span>
+                 <span class="text-sm font-bold text-gray-900 whitespace-nowrap">${c.amount_type === 'percentage' ? parseFloat(c.amount).toFixed(1) + '%' : formatMoney(c.amount)}</span>
                  <div class="flex gap-0.5 flex-shrink-0">
                    <button class="global-edit-btn text-gray-400 hover:text-indigo-600 text-xs px-2 py-1 rounded-lg hover:bg-white/60"
                      data-cost='${JSON.stringify({
                        id: c.id, name: c.name,
                        amount: parseFloat(c.amount),
+                       amount_type: c.amount_type || 'fixed',
                        category: c.category,
                        cost_type: c.cost_type || 'fixed',
                        note: c.note || ''
@@ -314,12 +319,23 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
           placeholder="例如：辦公室租金、FB 廣告費" required>
       </div>
 
-      <!-- 金額 -->
+      <!-- 金額類型 + 金額 -->
       <div class="mb-3">
-        <label class="block text-sm font-medium text-gray-700 mb-1">金額（NT$）<span class="text-red-500">*</span></label>
-        <input type="number" id="g-amount" value="${isEdit ? cost.amount : ''}" min="0" step="0.01"
-          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          placeholder="0.00" required>
+        <label class="block text-sm font-medium text-gray-700 mb-1">金額 <span class="text-red-500">*</span></label>
+        <div class="flex items-center gap-2">
+          <div class="flex rounded-lg border border-gray-300 overflow-hidden text-sm flex-shrink-0">
+            <button type="button" id="g-amt-type-fixed"
+              class="px-2.5 py-2 font-medium transition-colors ${isEdit && cost.amount_type === 'percentage' ? 'bg-white text-gray-600' : 'bg-indigo-600 text-white'}">NT$</button>
+            <button type="button" id="g-amt-type-pct"
+              class="px-2.5 py-2 font-medium transition-colors ${isEdit && cost.amount_type === 'percentage' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'}">%</button>
+          </div>
+          <input type="number" id="g-amount" value="${isEdit ? cost.amount : ''}" min="0"
+            step="${isEdit && cost.amount_type === 'percentage' ? '0.1' : '0.01'}"
+            class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="${isEdit && cost.amount_type === 'percentage' ? '0.0' : '0.00'}" required>
+          <span id="g-amount-unit" class="text-sm text-gray-500 whitespace-nowrap flex-shrink-0">${isEdit && cost.amount_type === 'percentage' ? '% 成交金額' : '元'}</span>
+        </div>
+        <p id="g-amount-hint" class="text-xs text-gray-400 mt-1 px-0.5">${isEdit && cost.amount_type === 'percentage' ? '以每筆成交金額的百分比計費（例如輸入 2.5 表示 2.5%）' : '直接輸入費用金額（新台幣）'}</p>
       </div>
 
       <!-- 備註 -->
@@ -342,6 +358,26 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
   Modal.show(html);
   document.getElementById('modal-cancel').onclick = () => Modal.close();
   document.getElementById('g-name').focus();
+
+  // ── 金額類型切換（NT$ / %）──────────────────────────────
+  let activeAmountType = (isEdit && cost?.amount_type) ? cost.amount_type : 'fixed';
+
+  function updateAmountTypeToggle(type) {
+    activeAmountType = type;
+    document.getElementById('g-amt-type-fixed').className =
+      `px-2.5 py-2 font-medium transition-colors ${type === 'fixed' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'}`;
+    document.getElementById('g-amt-type-pct').className =
+      `px-2.5 py-2 font-medium transition-colors ${type === 'percentage' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'}`;
+    document.getElementById('g-amount-unit').textContent  = type === 'fixed' ? '元' : '% 成交金額';
+    document.getElementById('g-amount').placeholder       = type === 'fixed' ? '0.00' : '0.0';
+    document.getElementById('g-amount').step              = type === 'fixed' ? '0.01' : '0.1';
+    document.getElementById('g-amount-hint').textContent  = type === 'fixed'
+      ? '直接輸入費用金額（新台幣）'
+      : '以每筆成交金額的百分比計費（例如輸入 2.5 表示 2.5%）';
+  }
+  document.getElementById('g-amt-type-fixed').onclick = () => updateAmountTypeToggle('fixed');
+  document.getElementById('g-amt-type-pct').onclick   = () => updateAmountTypeToggle('percentage');
+  // ─────────────────────────────────────────────────────
 
   // ── 自訂類別邏輯 ──────────────────────────────────────
   const catSel      = document.getElementById('g-cat');
@@ -415,11 +451,12 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
       ? (CUSTOM_CAT_FALLBACK[activeGroupKey] || 'other')
       : rawCat;
     const body = {
-      name:      document.getElementById('g-name').value.trim(),
-      amount:    parseFloat(document.getElementById('g-amount').value),
-      category:  resolvedCategory,
-      cost_type: activeCostType,
-      note:      document.getElementById('g-note').value.trim(),
+      name:        document.getElementById('g-name').value.trim(),
+      amount:      parseFloat(document.getElementById('g-amount').value),
+      amount_type: activeAmountType,
+      category:    resolvedCategory,
+      cost_type:   activeCostType,
+      note:        document.getElementById('g-note').value.trim(),
     };
     try {
       if (isEdit) {

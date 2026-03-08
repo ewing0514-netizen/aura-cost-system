@@ -46,10 +46,12 @@ CREATE TABLE products (
 -- ================================
 CREATE TABLE cost_items (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  product_id  UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  product_id  UUID REFERENCES products(id) ON DELETE CASCADE,  -- NULL = 全域成本
   name        VARCHAR(255) NOT NULL,
   amount      NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
+  amount_type VARCHAR(10)  NOT NULL DEFAULT 'fixed' CHECK (amount_type IN ('fixed', 'percentage')),
   category    cost_category NOT NULL DEFAULT 'other',
+  cost_type   VARCHAR(10)  NOT NULL DEFAULT 'variable' CHECK (cost_type IN ('variable', 'fixed')),
   note        TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -111,42 +113,73 @@ SELECT
   pt.price_type,
   pt.amount               AS selling_price,
 
-  -- 總成本（每單位）
-  COALESCE(SUM(ci.amount), 0) AS total_cost,
+  -- 總成本（固定金額 + 百分比×售價）
+  COALESCE(SUM(
+    CASE
+      WHEN ci.amount_type = 'percentage' THEN ci.amount / 100.0 * pt.amount
+      ELSE ci.amount
+    END
+  ), 0) AS total_cost,
 
-  -- 可變成本 = 原料 + 人工 + 包裝 + 其他
-  COALESCE(SUM(ci.amount) FILTER (
-    WHERE ci.category IN ('material', 'labor', 'packaging', 'other')
-  ), 0) AS variable_cost,
+  -- 可變成本（cost_type = 'variable'）
+  COALESCE(SUM(
+    CASE
+      WHEN ci.amount_type = 'percentage' THEN ci.amount / 100.0 * pt.amount
+      ELSE ci.amount
+    END
+  ) FILTER (WHERE COALESCE(ci.cost_type, 'variable') = 'variable'), 0) AS variable_cost,
 
-  -- 固定成本
-  COALESCE(SUM(ci.amount) FILTER (
-    WHERE ci.category = 'fixed'
-  ), 0) AS total_fixed_cost,
+  -- 固定成本（cost_type = 'fixed'）
+  COALESCE(SUM(
+    CASE
+      WHEN ci.amount_type = 'percentage' THEN ci.amount / 100.0 * pt.amount
+      ELSE ci.amount
+    END
+  ) FILTER (WHERE ci.cost_type = 'fixed'), 0) AS total_fixed_cost,
 
   -- 每單位利潤 = 售價 - 總成本
-  (pt.amount - COALESCE(SUM(ci.amount), 0)) AS profit_per_unit,
+  pt.amount - COALESCE(SUM(
+    CASE
+      WHEN ci.amount_type = 'percentage' THEN ci.amount / 100.0 * pt.amount
+      ELSE ci.amount
+    END
+  ), 0) AS profit_per_unit,
 
   -- 利潤率（%）
   CASE
     WHEN pt.amount = 0 THEN 0
     ELSE ROUND(
-      (pt.amount - COALESCE(SUM(ci.amount), 0)) / pt.amount * 100,
+      (pt.amount - COALESCE(SUM(
+        CASE
+          WHEN ci.amount_type = 'percentage' THEN ci.amount / 100.0 * pt.amount
+          ELSE ci.amount
+        END
+      ), 0)) / pt.amount * 100,
       2
     )
   END AS profit_margin_pct,
 
-  -- 損益平衡點（件數）= 固定成本 / (售價 - 可變成本)
-  -- 只有售價 > 可變成本時才有意義
+  -- 損益平衡點 = 固定成本 / (售價 - 可變成本)
   CASE
-    WHEN (pt.amount - COALESCE(SUM(ci.amount) FILTER (
-      WHERE ci.category IN ('material', 'labor', 'packaging', 'other')
-    ), 0)) <= 0 THEN NULL
+    WHEN (pt.amount - COALESCE(SUM(
+      CASE
+        WHEN ci.amount_type = 'percentage' THEN ci.amount / 100.0 * pt.amount
+        ELSE ci.amount
+      END
+    ) FILTER (WHERE COALESCE(ci.cost_type, 'variable') = 'variable'), 0)) <= 0 THEN NULL
     ELSE CEIL(
-      COALESCE(SUM(ci.amount) FILTER (WHERE ci.category = 'fixed'), 0) /
-      (pt.amount - COALESCE(SUM(ci.amount) FILTER (
-        WHERE ci.category IN ('material', 'labor', 'packaging', 'other')
-      ), 0))
+      COALESCE(SUM(
+        CASE
+          WHEN ci.amount_type = 'percentage' THEN ci.amount / 100.0 * pt.amount
+          ELSE ci.amount
+        END
+      ) FILTER (WHERE ci.cost_type = 'fixed'), 0) /
+      (pt.amount - COALESCE(SUM(
+        CASE
+          WHEN ci.amount_type = 'percentage' THEN ci.amount / 100.0 * pt.amount
+          ELSE ci.amount
+        END
+      ) FILTER (WHERE COALESCE(ci.cost_type, 'variable') = 'variable'), 0))
     )
   END AS break_even_units
 

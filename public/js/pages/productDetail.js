@@ -178,12 +178,13 @@ function renderCostGroupCard(groupKey, group, costs) {
                    </div>
                    ${c.note ? `<div class="text-xs text-gray-400 mt-0.5 truncate">${escapeHtml(c.note)}</div>` : ''}
                  </div>
-                 <span class="text-sm font-bold text-gray-900 whitespace-nowrap">${formatMoney(c.amount)}</span>
+                 <span class="text-sm font-bold text-gray-900 whitespace-nowrap">${c.amount_type === 'percentage' ? parseFloat(c.amount).toFixed(1) + '%' : formatMoney(c.amount)}</span>
                  <div class="flex gap-0.5 flex-shrink-0">
                    <button class="cost-edit-btn text-gray-400 hover:text-indigo-600 text-xs px-2 py-1 rounded-lg hover:bg-white/60"
                      data-cost='${JSON.stringify({
                        id: c.id, name: c.name,
                        amount: parseFloat(c.amount),
+                       amount_type: c.amount_type || 'fixed',
                        category: c.category,
                        cost_type: c.cost_type || 'variable',
                        note: c.note || ''
@@ -207,7 +208,8 @@ function renderCostGroupCard(groupKey, group, costs) {
 function showCostModal(cost, defaultGroupKey, onSave) {
   const isEdit = !!cost;
 
-  let activeCostType = cost ? (cost.cost_type || 'variable') : 'variable';
+  let activeCostType   = cost ? (cost.cost_type   || 'variable') : 'variable';
+  let activeAmountType = cost ? (cost.amount_type  || 'fixed')   : 'fixed';
   // 強制鎖定 product 群組
   const activeGroupKey = 'product';
   const productCats = COST_GROUPS.product.categories; // ['material','labor','packaging']
@@ -257,12 +259,23 @@ function showCostModal(cost, defaultGroupKey, onSave) {
           placeholder="例如：皂基、人工費" required>
       </div>
 
-      <!-- 金額 -->
+      <!-- 金額類型 + 金額 -->
       <div class="mb-3">
-        <label class="block text-sm font-medium text-gray-700 mb-1">金額（NT$）<span class="text-red-500">*</span></label>
-        <input type="number" id="c-amount" value="${isEdit ? cost.amount : ''}" min="0" step="0.01"
-          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          placeholder="0.00" required>
+        <label class="block text-sm font-medium text-gray-700 mb-1">金額 <span class="text-red-500">*</span></label>
+        <div class="flex items-center gap-2">
+          <div class="flex rounded-lg border border-gray-300 overflow-hidden text-sm flex-shrink-0">
+            <button type="button" id="c-amt-type-fixed"
+              class="px-2.5 py-2 font-medium transition-colors ${activeAmountType === 'percentage' ? 'bg-white text-gray-600' : 'bg-indigo-600 text-white'}">NT$</button>
+            <button type="button" id="c-amt-type-pct"
+              class="px-2.5 py-2 font-medium transition-colors ${activeAmountType === 'percentage' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'}">%</button>
+          </div>
+          <input type="number" id="c-amount" value="${isEdit ? cost.amount : ''}" min="0"
+            step="${activeAmountType === 'percentage' ? '0.1' : '0.01'}"
+            class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="${activeAmountType === 'percentage' ? '0.0' : '0.00'}" required>
+          <span id="c-amount-unit" class="text-sm text-gray-500 whitespace-nowrap flex-shrink-0">${activeAmountType === 'percentage' ? '% 售價' : '元'}</span>
+        </div>
+        <p id="c-amount-hint" class="text-xs text-gray-400 mt-1 px-0.5">${activeAmountType === 'percentage' ? '以該售價方案的百分比計費（例如輸入 10 表示平台抽成 10%）' : '直接輸入費用金額（新台幣）'}</p>
       </div>
 
       <!-- 備註 -->
@@ -286,6 +299,23 @@ function showCostModal(cost, defaultGroupKey, onSave) {
   document.getElementById('modal-cancel').onclick = () => Modal.close();
   document.getElementById('c-name').focus();
 
+  // 金額類型切換（NT$ / %）
+  function updateAmountTypeToggle(type) {
+    activeAmountType = type;
+    document.getElementById('c-amt-type-fixed').className =
+      `px-2.5 py-2 font-medium transition-colors ${type === 'fixed' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'}`;
+    document.getElementById('c-amt-type-pct').className =
+      `px-2.5 py-2 font-medium transition-colors ${type === 'percentage' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'}`;
+    document.getElementById('c-amount-unit').textContent  = type === 'fixed' ? '元' : '% 售價';
+    document.getElementById('c-amount').placeholder       = type === 'fixed' ? '0.00' : '0.0';
+    document.getElementById('c-amount').step              = type === 'fixed' ? '0.01' : '0.1';
+    document.getElementById('c-amount-hint').textContent  = type === 'fixed'
+      ? '直接輸入費用金額（新台幣）'
+      : '以該售價方案的百分比計費（例如輸入 10 表示平台抽成 10%）';
+  }
+  document.getElementById('c-amt-type-fixed').onclick = () => updateAmountTypeToggle('fixed');
+  document.getElementById('c-amt-type-pct').onclick   = () => updateAmountTypeToggle('percentage');
+
   // 可變/固定切換
   function updateTypeToggle(type) {
     activeCostType = type;
@@ -302,11 +332,12 @@ function showCostModal(cost, defaultGroupKey, onSave) {
   document.getElementById('cost-form').onsubmit = async (e) => {
     e.preventDefault();
     const body = {
-      name:      document.getElementById('c-name').value.trim(),
-      amount:    parseFloat(document.getElementById('c-amount').value),
-      category:  document.getElementById('c-cat').value,
-      cost_type: activeCostType,
-      note:      document.getElementById('c-note').value.trim(),
+      name:        document.getElementById('c-name').value.trim(),
+      amount:      parseFloat(document.getElementById('c-amount').value),
+      amount_type: activeAmountType,
+      category:    document.getElementById('c-cat').value,
+      cost_type:   activeCostType,
+      note:        document.getElementById('c-note').value.trim(),
     };
     try {
       if (isEdit) {
@@ -482,7 +513,7 @@ function showPriceModal(price, onSave) {
 async function renderAnalysisTab(container) {
   const data = await api.analysis.product(currentProductId);
 
-  const { total_cost, variable_cost, fixed_cost, prices } = data;
+  const { total_cost, variable_cost, fixed_cost, prices, pct_costs = [], total_pct_rate = 0 } = data;
 
   if (prices.length === 0) {
     container.innerHTML = `
@@ -502,6 +533,7 @@ async function renderAnalysisTab(container) {
       <div class="bg-white border border-gray-200 rounded-xl p-4">
         <div class="text-xs text-gray-500 mb-1">每單位總成本</div>
         <div class="text-lg font-bold text-gray-900">${formatMoney(total_cost)}</div>
+        ${total_pct_rate > 0 ? `<div class="text-xs text-amber-600 mt-0.5">+ ${total_pct_rate.toFixed(1)}% 依售價</div>` : ''}
       </div>
       <div class="bg-white border border-gray-200 rounded-xl p-4">
         <div class="text-xs text-gray-500 mb-1">可變成本</div>
@@ -518,6 +550,15 @@ async function renderAnalysisTab(container) {
         <div class="text-lg font-bold text-gray-900">${prices.length} 種</div>
       </div>
     </div>
+
+    ${total_pct_rate > 0 ? `
+    <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 flex items-start gap-2">
+      <span class="text-base flex-shrink-0">📊</span>
+      <div>
+        <span class="font-medium">含 ${total_pct_rate.toFixed(1)}% 的百分比成本</span>（${pct_costs.map(c => c.rate.toFixed(1) + '%').join(' + ')}），實際金額已依各售價方案計算於下方損益表中。
+      </div>
+    </div>
+    ` : ''}
 
     <!-- 損益分析表格 -->
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">

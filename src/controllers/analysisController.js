@@ -26,7 +26,7 @@ async function getProductAnalysis(req, res, next) {
     // 取得成本明細，使用 cost_type 計算可變/固定成本
     const { data: costItems, error: cErr } = await supabase
       .from('cost_items')
-      .select('amount, category, cost_type')
+      .select('amount, amount_type, category, cost_type')
       .eq('product_id', productId);
 
     if (cErr) throw cErr;
@@ -35,8 +35,13 @@ async function getProductAnalysis(req, res, next) {
     let variableCost = 0;
     let fixedCost    = 0;
     const costByCategory = {};
+    const pctCosts = []; // 百分比成本項目（實際金額依售價而定）
 
     for (const item of costItems) {
+      if (item.amount_type === 'percentage') {
+        pctCosts.push({ category: item.category, cost_type: item.cost_type, rate: parseFloat(item.amount) });
+        continue; // 百分比成本不計入固定金額統計
+      }
       const amt = parseFloat(item.amount);
       costByCategory[item.category] = (costByCategory[item.category] || 0) + amt;
       totalCost += amt;
@@ -46,6 +51,8 @@ async function getProductAnalysis(req, res, next) {
         variableCost += amt;
       }
     }
+
+    const totalPctRate = pctCosts.reduce((s, c) => s + c.rate, 0);
 
     const prices = rows.map(row => ({
       price_tier_id:     row.price_tier_id,
@@ -67,6 +74,8 @@ async function getProductAnalysis(req, res, next) {
         variable_cost: variableCost,
         fixed_cost:    fixedCost,
         cost_breakdown: costByCategory,
+        pct_costs:     pctCosts,       // 百分比成本項目
+        total_pct_rate: totalPctRate,  // 總百分比費率（%）
         prices,
       }
     });
