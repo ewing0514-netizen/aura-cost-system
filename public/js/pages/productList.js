@@ -237,12 +237,27 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
     }).join('');
   }
 
+  // 自訂類別對應的 DB ENUM 值（按分組）
+  const CUSTOM_CAT_FALLBACK = { operations: 'fixed', marketing: 'other', other: 'other' };
+
   function buildCategoryOptions(forGroupKey, selectedCat) {
     const cats = COST_GROUPS[forGroupKey]?.categories || [];
+    const customCats = getCustomCats(forGroupKey);
     const effective = (selectedCat && cats.includes(selectedCat)) ? selectedCat : cats[0];
-    return cats.map(v =>
+
+    let opts = cats.map(v =>
       `<option value="${v}" ${effective === v ? 'selected' : ''}>${CATEGORY_LABELS[v] || v}</option>`
     ).join('');
+
+    if (customCats.length > 0) {
+      opts += `<option disabled>────────</option>`;
+      customCats.forEach(cc => {
+        opts += `<option value="cc:${cc.id}">⭐ ${cc.label}</option>`;
+      });
+    }
+
+    opts += `<option value="__new__">＋ 新增類別...</option>`;
+    return opts;
   }
 
   const html = `
@@ -281,6 +296,14 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
         <select id="g-cat" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
           ${buildCategoryOptions(activeGroupKey, cost?.category)}
         </select>
+        <div id="g-new-cat-row" class="hidden mt-2 flex items-center gap-2">
+          <input id="g-new-cat-input" type="text" maxlength="20" placeholder="輸入類別名稱（最多20字）"
+            class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <button type="button" id="g-new-cat-ok"
+            class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium whitespace-nowrap">確認</button>
+          <button type="button" id="g-new-cat-x"
+            class="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-sm whitespace-nowrap">✕</button>
+        </div>
       </div>
 
       <!-- 名稱 -->
@@ -320,6 +343,44 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
   document.getElementById('modal-cancel').onclick = () => Modal.close();
   document.getElementById('g-name').focus();
 
+  // ── 自訂類別邏輯 ──────────────────────────────────────
+  const catSel      = document.getElementById('g-cat');
+  const newCatRow   = document.getElementById('g-new-cat-row');
+  const newCatInput = document.getElementById('g-new-cat-input');
+
+  catSel.addEventListener('change', () => {
+    if (catSel.value === '__new__') {
+      newCatRow.classList.remove('hidden');
+      newCatInput.focus();
+    } else {
+      newCatRow.classList.add('hidden');
+    }
+  });
+
+  function confirmNewCat() {
+    const label = newCatInput.value.trim();
+    if (!label) { newCatInput.focus(); return; }
+    const entry = addCustomCat(activeGroupKey, label);
+    if (!entry) { toast('此類別名稱已存在', 'error'); return; }
+    catSel.innerHTML = buildCategoryOptions(activeGroupKey, null);
+    // 選中新建的項目
+    catSel.value = 'cc:' + entry.id;
+    newCatRow.classList.add('hidden');
+    newCatInput.value = '';
+  }
+
+  document.getElementById('g-new-cat-ok').onclick = confirmNewCat;
+  document.getElementById('g-new-cat-x').onclick = () => {
+    newCatRow.classList.add('hidden');
+    newCatInput.value = '';
+    catSel.value = COST_GROUPS[activeGroupKey]?.categories[0] || 'other';
+  };
+  newCatInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); confirmNewCat(); }
+    if (e.key === 'Escape') document.getElementById('g-new-cat-x').click();
+  });
+  // ─────────────────────────────────────────────────────
+
   // 可變/固定切換
   function updateTypeToggle(type) {
     activeCostType = type;
@@ -340,16 +401,23 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
     document.querySelectorAll('#g-group-tab-bar .group-tab-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.group === activeGroupKey);
     });
-    document.getElementById('g-cat').innerHTML = buildCategoryOptions(activeGroupKey, null);
+    catSel.innerHTML = buildCategoryOptions(activeGroupKey, null);
+    newCatRow.classList.add('hidden');
+    newCatInput.value = '';
   });
 
   // 表單送出
   document.getElementById('global-cost-form').onsubmit = async (e) => {
     e.preventDefault();
+    // 自訂類別（cc:xxx）映射到 DB ENUM 值
+    const rawCat = catSel.value;
+    const resolvedCategory = rawCat.startsWith('cc:')
+      ? (CUSTOM_CAT_FALLBACK[activeGroupKey] || 'other')
+      : rawCat;
     const body = {
       name:      document.getElementById('g-name').value.trim(),
       amount:    parseFloat(document.getElementById('g-amount').value),
-      category:  document.getElementById('g-cat').value,
+      category:  resolvedCategory,
       cost_type: activeCostType,
       note:      document.getElementById('g-note').value.trim(),
     };

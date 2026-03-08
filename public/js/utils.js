@@ -188,6 +188,38 @@ function resizeImageToDataURL(file, w, h, quality) {
   });
 }
 
+// ===== 自訂類別管理（localStorage）=====
+const _CC_KEY = 'aura_custom_cats_v1';
+
+function _ccLoad() {
+  try { return JSON.parse(localStorage.getItem(_CC_KEY) || '{}'); }
+  catch { return {}; }
+}
+
+function getCustomCats(groupKey) {
+  return _ccLoad()[groupKey] || [];
+}
+
+function addCustomCat(groupKey, label) {
+  label = label.trim();
+  if (!label) return null;
+  const all = _ccLoad();
+  if (!all[groupKey]) all[groupKey] = [];
+  if (all[groupKey].some(c => c.label === label)) return null; // 重複
+  const entry = { id: 'cc' + Date.now(), label };
+  all[groupKey].push(entry);
+  localStorage.setItem(_CC_KEY, JSON.stringify(all));
+  return entry;
+}
+
+function removeCustomCat(groupKey, id) {
+  const all = _ccLoad();
+  if (all[groupKey]) {
+    all[groupKey] = all[groupKey].filter(c => c.id !== id);
+    localStorage.setItem(_CC_KEY, JSON.stringify(all));
+  }
+}
+
 // ===== 全域匯出 =====
 window.formatMoney          = formatMoney;
 window.formatPct            = formatPct;
@@ -204,3 +236,6 @@ window.PRICE_TYPE_LABELS    = PRICE_TYPE_LABELS;
 window.COST_TYPE_LABELS     = COST_TYPE_LABELS;
 window.COST_GROUPS          = COST_GROUPS;
 window.CATEGORY_TO_GROUP    = CATEGORY_TO_GROUP;
+window.getCustomCats        = getCustomCats;
+window.addCustomCat         = addCustomCat;
+window.removeCustomCat      = removeCustomCat;
