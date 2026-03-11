@@ -98,6 +98,23 @@ const api = {
     update: (id, b)   => request('PUT',    `/costs/${id}`, b),
     delete: (id)      => request('DELETE', `/costs/${id}`),
   },
+
+  // 供應商
+  suppliers: {
+    list:   ()        => request('GET',    '/payments/suppliers'),
+    create: (body)    => request('POST',   '/payments/suppliers', body),
+    update: (id, b)   => request('PUT',    `/payments/suppliers/${id}`, b),
+    delete: (id)      => request('DELETE', `/payments/suppliers/${id}`),
+  },
+
+  // 採購訂單（貨款記錄）
+  purchaseOrders: {
+    list:   (qs)      => request('GET',    '/payments/purchase-orders' + (qs || '')),
+    get:    (id)      => request('GET',    `/payments/purchase-orders/${id}`),
+    create: (body)    => request('POST',   '/payments/purchase-orders', body),
+    update: (id, b)   => request('PUT',    `/payments/purchase-orders/${id}`, b),
+    delete: (id)      => request('DELETE', `/payments/purchase-orders/${id}`),
+  },
 };
 
 window.api = api;

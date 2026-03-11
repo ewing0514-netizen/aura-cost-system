@@ -9,6 +9,9 @@ function handleRoute() {
   } else if (hash === '#/analysis') {
     renderAnalysisSummary();
     updateNav('analysis');
+  } else if (hash === '#/payments') {
+    renderPaymentList();
+    updateNav('payments');
   } else {
     const m = hash.match(/^#\/product\/([a-f0-9-]+)$/);
     if (m) {
