@@ -160,6 +160,21 @@ async function renderPaymentList() {
     `;
   }
 
+  function isTableMissingError(err) {
+    return err.message && err.message.includes("Could not find the table");
+  }
+
+  function renderMigrationNotice() {
+    return `
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 text-center">
+        <div class="text-3xl mb-2">🔧</div>
+        <p class="text-sm font-semibold text-amber-800 mb-1">需要先執行資料庫 Migration</p>
+        <p class="text-xs text-amber-600 mb-3">請到 Supabase SQL Editor，貼上並執行<br><code class="font-mono bg-amber-100 px-1 rounded">database/migration_payment_records.sql</code></p>
+        <p class="text-xs text-gray-400">執行完成後重新整理頁面即可</p>
+      </div>
+    `;
+  }
+
   async function loadOrders() {
     const container = document.getElementById('order-list-content');
     try {
@@ -167,7 +182,12 @@ async function renderPaymentList() {
       loadStats(allOrders);
       renderOrders();
     } catch (err) {
-      container.innerHTML = `<div class="text-center py-12 text-red-500">載入失敗：${err.message}</div>`;
+      if (isTableMissingError(err)) {
+        container.innerHTML = renderMigrationNotice();
+        document.getElementById('payment-stats').innerHTML = `<div class="col-span-3 text-center text-xs text-gray-400 py-4">執行 migration 後即可看到統計資料</div>`;
+      } else {
+        container.innerHTML = `<div class="text-center py-12 text-red-500">載入失敗：${err.message}</div>`;
+      }
     }
   }
 
@@ -200,7 +220,11 @@ async function renderPaymentList() {
         </div>
       `;
     } catch (err) {
-      container.innerHTML = `<div class="text-center py-8 text-red-500 text-sm">載入失敗：${err.message}</div>`;
+      if (isTableMissingError(err)) {
+        container.innerHTML = renderMigrationNotice();
+      } else {
+        container.innerHTML = `<div class="text-center py-8 text-red-500 text-sm">載入失敗：${err.message}</div>`;
+      }
     }
   }
 
@@ -450,12 +474,26 @@ function showSupplierModal(supplier, onSave) {
 
   root.innerHTML = `
     <div class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" id="modal-overlay">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h3 class="text-base font-semibold text-gray-900">${isEdit ? '編輯供應商' : '新增供應商'}</h3>
           <button id="modal-close" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
-        <form id="supplier-form" class="px-6 py-4 space-y-4">
+        <div class="px-6 pt-4">
+          <!-- AI 上傳區塊 -->
+          <div class="mb-4">
+            <p class="text-xs text-gray-500 mb-2 font-medium">🤖 AI 自動提取資訊（選用）</p>
+            <label id="s-upload-label" class="flex flex-col items-center justify-center gap-1 border-2 border-dashed border-indigo-200 rounded-xl p-4 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
+              <input type="file" id="s-file" accept="image/jpeg,image/png,image/webp,image/gif,.pdf" class="hidden">
+              <span id="s-upload-icon" class="text-2xl">📄</span>
+              <span id="s-upload-text" class="text-sm text-indigo-600 font-medium">上傳截圖或 PDF</span>
+              <span class="text-xs text-gray-400">AI 自動識別公司名稱、聯絡方式、銀行帳號</span>
+            </label>
+            <div id="s-extract-status" class="hidden mt-2 text-sm text-center"></div>
+          </div>
+          <div class="border-t border-gray-100 mb-4"></div>
+        </div>
+        <form id="supplier-form" class="px-6 pb-4 space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">供應商名稱 <span class="text-red-500">*</span></label>
             <input id="s-name" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" value="${escHtml(supplier?.name || '')}" required>
@@ -487,6 +525,47 @@ function showSupplierModal(supplier, onSave) {
   document.getElementById('modal-cancel').onclick = closeModal;
   document.getElementById('modal-overlay').onclick = e => { if (e.target === e.currentTarget) closeModal(); };
 
+  // ── AI 提取邏輯 ──
+  document.getElementById('s-file').onchange = async function() {
+    const file = this.files[0];
+    if (!file) return;
+
+    const statusEl = document.getElementById('s-extract-status');
+    const iconEl   = document.getElementById('s-upload-icon');
+    const textEl   = document.getElementById('s-upload-text');
+
+    // 顯示 loading
+    statusEl.className = 'mt-2 text-sm text-center text-indigo-600';
+    statusEl.textContent = '🤖 AI 識別中…';
+    iconEl.textContent   = '⏳';
+    textEl.textContent   = file.name.length > 20 ? file.name.slice(0, 20) + '…' : file.name;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res  = await fetch('/api/v1/payments/suppliers/extract-info', { method: 'POST', body: formData });
+      const json = await res.json();
+
+      if (!json.success) throw new Error(json.error?.message || '提取失敗');
+
+      const d = json.data;
+      // 自動填入（不覆蓋已有內容）
+      if (d.name         && !document.getElementById('s-name').value.trim())    document.getElementById('s-name').value    = d.name;
+      if (d.contact_info && !document.getElementById('s-contact').value.trim()) document.getElementById('s-contact').value = d.contact_info;
+      if (d.bank_account && !document.getElementById('s-account').value.trim()) document.getElementById('s-account').value = d.bank_account;
+
+      iconEl.textContent = '✅';
+      statusEl.className = 'mt-2 text-sm text-center text-green-600';
+      statusEl.textContent = '提取成功！請確認並補充資訊';
+    } catch (err) {
+      iconEl.textContent = '❌';
+      statusEl.className = 'mt-2 text-sm text-center text-red-500';
+      statusEl.textContent = err.message;
+    }
+  };
+
+  // ── 儲存表單 ──
   document.getElementById('supplier-form').onsubmit = async e => {
     e.preventDefault();
     const errEl = document.getElementById('form-error');
