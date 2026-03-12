@@ -60,6 +60,7 @@ async function renderPaymentList() {
 
   let currentTab = 'all';
   let allOrders = [];
+  let allSuppliers = [];
 
   document.getElementById('btn-add-order').onclick = () => showPurchaseOrderModal(null, refresh);
   document.getElementById('btn-add-supplier').onclick = () => showSupplierModal(null, loadSuppliers);
@@ -76,6 +77,19 @@ async function renderPaymentList() {
       });
       renderOrders();
     };
+  });
+
+  // 事件委派：訂單列表按鈕
+  document.getElementById('order-list-content').addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const { action, id, name } = btn.dataset;
+    if (action === 'edit-order') {
+      const order = allOrders.find(o => o.id === id);
+      if (order) showPurchaseOrderModal(order, refresh);
+    } else if (action === 'delete-order') {
+      deletePurchaseOrder(id, name, refresh);
+    }
   });
 
   function renderOrders() {
@@ -119,8 +133,8 @@ async function renderPaymentList() {
             </div>
           </div>
           <div class="flex justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
-            <button onclick="showPurchaseOrderModal(${JSON.stringify(o).replace(/"/g, '&quot;')}, window._payRefresh)" class="text-xs text-gray-500 hover:text-indigo-600 px-2 py-1 rounded hover:bg-gray-50">編輯</button>
-            <button onclick="deletePurchaseOrder('${o.id}', '${escHtml(o.item_description).replace(/'/g, "\\'")}', window._payRefresh)" class="text-xs text-gray-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50">刪除</button>
+            <button data-action="edit-order" data-id="${o.id}" class="text-xs text-gray-500 hover:text-indigo-600 px-2 py-1 rounded hover:bg-gray-50">編輯</button>
+            <button data-action="delete-order" data-id="${o.id}" data-name="${escHtml(o.item_description)}" class="text-xs text-gray-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50">刪除</button>
           </div>
         </div>
       `;
@@ -191,10 +205,24 @@ async function renderPaymentList() {
     }
   }
 
+  // 事件委派：供應商列表按鈕
+  document.getElementById('supplier-list-content').addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const { action, id, name } = btn.dataset;
+    if (action === 'edit-supplier') {
+      const supplier = allSuppliers.find(s => s.id === id);
+      if (supplier) showSupplierModal(supplier, loadSuppliers);
+    } else if (action === 'delete-supplier') {
+      deleteSupplier(id, name, loadSuppliers);
+    }
+  });
+
   async function loadSuppliers() {
     const container = document.getElementById('supplier-list-content');
     try {
       const suppliers = await api.suppliers.list();
+      allSuppliers = suppliers;
       if (suppliers.length === 0) {
         container.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm">尚無供應商，點擊上方「新增供應商」</div>`;
         return;
@@ -212,8 +240,8 @@ async function renderPaymentList() {
                 </div>
               </div>
               <div class="flex gap-2">
-                <button onclick="showSupplierModal(${JSON.stringify(s).replace(/"/g, '&quot;')}, window._supplierRefresh)" class="text-xs text-gray-500 hover:text-indigo-600 px-2 py-1 rounded hover:bg-gray-50">編輯</button>
-                <button onclick="deleteSupplier('${s.id}', '${escHtml(s.name).replace(/'/g, "\\'")}', window._supplierRefresh)" class="text-xs text-gray-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50">刪除</button>
+                <button data-action="edit-supplier" data-id="${s.id}" class="text-xs text-gray-500 hover:text-indigo-600 px-2 py-1 rounded hover:bg-gray-50">編輯</button>
+                <button data-action="delete-supplier" data-id="${s.id}" data-name="${escHtml(s.name)}" class="text-xs text-gray-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50">刪除</button>
               </div>
             </div>
           `).join('')}
@@ -231,10 +259,6 @@ async function renderPaymentList() {
   function refresh() {
     loadOrders();
   }
-
-  // 暴露給 inline onclick
-  window._payRefresh = refresh;
-  window._supplierRefresh = loadSuppliers;
 
   loadOrders();
   loadSuppliers();

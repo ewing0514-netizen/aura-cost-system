@@ -97,6 +97,10 @@ async function create(req, res, next) {
     const { error: valErr, value } = schema.validate(req.body);
     if (valErr) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: valErr.message } });
 
+    if (value.deposit_amount > value.total_amount) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: '訂金不可超過總金額' } });
+    }
+
     const { data, error } = await supabase
       .from('purchase_orders')
       .insert({
@@ -125,6 +129,10 @@ async function update(req, res, next) {
     const { id } = req.params;
     const { error: valErr, value } = schema.validate(req.body);
     if (valErr) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: valErr.message } });
+
+    if (value.deposit_amount > value.total_amount) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: '訂金不可超過總金額' } });
+    }
 
     const { data, error } = await supabase
       .from('purchase_orders')

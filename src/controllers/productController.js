@@ -50,10 +50,11 @@ async function get(req, res, next) {
       .eq('id', id)
       .single();
 
-    if (error || !data) {
-      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到指定產品' } });
+    if (error) {
+      if (error.code === 'PGRST116') return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到指定產品' } });
+      throw error;
     }
-
+    if (!data) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到指定產品' } });
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -104,7 +105,11 @@ async function update(req, res, next) {
       .select()
       .single();
 
-    if (error || !data) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到指定產品' } });
+    if (error) {
+      if (error.code === 'PGRST116') return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到指定產品' } });
+      throw error;
+    }
+    if (!data) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到指定產品' } });
     res.json({ success: true, data });
   } catch (err) {
     next(err);

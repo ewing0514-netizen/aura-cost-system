@@ -84,7 +84,7 @@ async function renderAnalysisSummary() {
         </div>
         <div class="bg-white border border-gray-100 rounded-xl p-4 ${stats.lowCount > 0 ? 'bg-red-50/60' : ''}">
           <div class="text-xs ${stats.lowCount > 0 ? 'text-red-600' : 'text-gray-500'} mb-1">
-            ${stats.lowCount > 0 ? '🔴 需關注' : '✅ 需關注'}
+            ${stats.lowCount > 0 ? '🔴 需關注' : '✅ 全部健康'}
           </div>
           <div class="text-2xl font-bold ${stats.lowCount > 0 ? 'text-red-500' : 'text-gray-400'}">${stats.lowCount}</div>
           <div class="text-xs text-gray-400 mt-0.5">低於 10%</div>
