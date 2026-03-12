@@ -546,9 +546,8 @@ function showProductModal(product, onSave) {
         </label>
         <input type="file" id="p-img-input" accept="image/*" class="hidden">
         <div id="p-img-preview"
-          class="cover-upload-zone w-full overflow-hidden"
-          style="aspect-ratio:1200/628"
-          onclick="document.getElementById('p-img-input').click()">
+          class="cover-upload-zone w-full overflow-hidden cursor-pointer"
+          style="aspect-ratio:1200/628">
           ${coverPreviewInner}
         </div>
         ${coverImageDataUrl ? `<button type="button" id="p-img-remove" class="mt-1 text-xs text-red-500 hover:text-red-700">✕ 移除圖片</button>` : ''}
@@ -576,6 +575,9 @@ function showProductModal(product, onSave) {
 
   Modal.show(html);
   document.getElementById('modal-cancel').onclick = () => Modal.close();
+  document.getElementById('p-img-preview').addEventListener('click', () => {
+    document.getElementById('p-img-input').click();
+  });
   document.getElementById('p-name').focus();
 
   document.getElementById('p-img-input').addEventListener('change', async (e) => {
@@ -623,6 +625,10 @@ function showProductModal(product, onSave) {
       description: document.getElementById('p-desc').value.trim(),
       cover_image: coverImageDataUrl,
     };
+    const submitBtn = document.querySelector('#product-form button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '儲存中...';
     try {
       if (isEdit) {
         await api.products.update(product.id, body);
@@ -634,7 +640,9 @@ function showProductModal(product, onSave) {
       Modal.close();
       onSave();
     } catch (err) {
-      toast(err.message, 'error');
+      toast(err.message || '儲存失敗，請稍後再試', 'error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
     }
   };
 }
