@@ -510,8 +510,22 @@ function showPriceModal(price, onSave) {
 // 損益分析 Tab
 // =====================================================
 
+function loadChartJs() {
+  return new Promise((resolve, reject) => {
+    if (window.Chart) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+    s.onload  = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
 async function renderAnalysisTab(container) {
-  const data = await api.analysis.product(currentProductId);
+  const [data] = await Promise.all([
+    api.analysis.product(currentProductId),
+    loadChartJs(),
+  ]);
 
   const { total_cost, variable_cost, fixed_cost, prices, pct_costs = [], total_pct_rate = 0 } = data;
 
