@@ -273,7 +273,12 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
   }
 
   // 自訂類別對應的 DB ENUM 值（按分組）
-  const CUSTOM_CAT_FALLBACK = { operations: 'fixed', marketing: 'other', other: 'other' };
+  // 自訂類別（cc:xxx）無法直接存到 DB，需對應到最接近的合法 category 值
+  // 這個 category 決定了成本項目會出現在哪個分組：
+  //   'fixed'       → CATEGORY_TO_GROUP['fixed']       = 'operations' ✓
+  //   'advertising' → CATEGORY_TO_GROUP['advertising'] = 'marketing'  ✓ (修正前誤設為 'other')
+  //   'other'       → CATEGORY_TO_GROUP['other']       = 'other'      ✓
+  const CUSTOM_CAT_FALLBACK = { operations: 'fixed', marketing: 'advertising', other: 'other' };
 
   function buildCategoryOptions(forGroupKey, selectedCat) {
     const cats = COST_GROUPS[forGroupKey]?.categories || [];
