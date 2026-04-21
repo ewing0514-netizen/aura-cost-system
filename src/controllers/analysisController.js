@@ -4,32 +4,29 @@ async function getProductAnalysis(req, res, next) {
   try {
     const { productId } = req.params;
 
-    // 取得產品基本資訊
-    const { data: product, error: pErr } = await supabase
-      .from('products')
-      .select('id, name, description')
-      .eq('id', productId)
-      .single();
+    // 三個查詢並行執行，減少等待時間
+    const [
+      { data: product, error: pErr },
+      { data: rows,    error: vErr },
+      { data: costItems, error: cErr },
+    ] = await Promise.all([
+      supabase.from('products')
+        .select('id, name, description')
+        .eq('id', productId)
+        .single(),
+      supabase.from('product_price_analysis')
+        .select('*')
+        .eq('product_id', productId),
+      supabase.from('cost_items')
+        .select('amount, amount_type, category, cost_type')
+        .eq('product_id', productId),
+    ]);
 
     if (pErr || !product) {
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到指定產品' } });
     }
-
-    // 從 View 取得損益分析資料
-    const { data: rows, error: vErr } = await supabase
-      .from('product_price_analysis')
-      .select('*')
-      .eq('product_id', productId);
-
-    if (vErr) throw vErr;
-
-    // 取得成本明細，使用 cost_type 計算可變/固定成本
-    const { data: costItems, error: cErr } = await supabase
-      .from('cost_items')
-      .select('amount, amount_type, category, cost_type')
-      .eq('product_id', productId);
-
-    if (cErr) throw cErr;
+    if (vErr)   throw vErr;
+    if (cErr)   throw cErr;
 
     let totalCost    = 0;
     let variableCost = 0;

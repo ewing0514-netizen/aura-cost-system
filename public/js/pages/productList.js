@@ -534,7 +534,7 @@ function showProductModal(product, onSave) {
     : `<div class="flex flex-col items-center justify-center h-full gap-2 text-gray-400 py-6">
          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
          <span class="text-sm font-medium">點擊上傳封面圖片</span>
-         <span class="text-xs text-gray-300">自動裁切為 1200 × 628</span>
+         <span class="text-xs text-gray-300">自動裁切為 800 × 418</span>
        </div>`;
 
   const html = `
@@ -542,7 +542,7 @@ function showProductModal(product, onSave) {
     <form id="product-form">
       <div class="mb-4">
         <label class="block text-sm font-medium text-gray-700 mb-1.5">
-          封面圖片 <span class="text-gray-400 text-xs font-normal">（1200 × 628，自動裁切）</span>
+          封面圖片 <span class="text-gray-400 text-xs font-normal">（800 × 418，自動裁切）</span>
         </label>
         <input type="file" id="p-img-input" accept="image/*" class="hidden">
         <div id="p-img-preview"
@@ -584,7 +584,7 @@ function showProductModal(product, onSave) {
     const file = e.target.files[0];
     if (!file) return;
     try {
-      coverImageDataUrl = await resizeImageToDataURL(file, 1200, 628);
+      coverImageDataUrl = await resizeImageToDataURL(file, 800, 418, 0.78);
       const preview = document.getElementById('p-img-preview');
       preview.innerHTML = `<img src="${coverImageDataUrl}" class="w-full h-full object-cover">`;
       const removeBtn = document.getElementById('p-img-remove');
@@ -609,7 +609,7 @@ function showProductModal(product, onSave) {
       <div class="flex flex-col items-center justify-center h-full gap-2 text-gray-400 py-6">
         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         <span class="text-sm font-medium">點擊上傳封面圖片</span>
-        <span class="text-xs text-gray-300">自動裁切為 1200 × 628</span>
+        <span class="text-xs text-gray-300">自動裁切為 800 × 418</span>
       </div>`;
     const removeBtn = document.getElementById('p-img-remove');
     if (removeBtn) removeBtn.remove();

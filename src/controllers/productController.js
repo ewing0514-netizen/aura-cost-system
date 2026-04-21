@@ -1,5 +1,9 @@
 const supabase = require('../config/database');
-const Joi = require('joi');
+const Joi      = require('joi');
+const cache    = require('../utils/cache');
+
+const LIST_CACHE_KEY = 'products:list';
+const LIST_TTL_MS    = 30_000; // 30 秒
 
 const schema = Joi.object({
   name:        Joi.string().trim().min(1).max(255).required(),
@@ -9,6 +13,13 @@ const schema = Joi.object({
 
 async function list(req, res, next) {
   try {
+    // 快取命中：直接回傳，跳過 DB
+    const cached = cache.get(LIST_CACHE_KEY);
+    if (cached) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.json({ success: true, data: cached });
+    }
+
     const { data, error } = await supabase
       .from('products')
       .select(`
@@ -35,6 +46,8 @@ async function list(req, res, next) {
       };
     });
 
+    cache.set(LIST_CACHE_KEY, products, LIST_TTL_MS);
+    res.setHeader('X-Cache', 'MISS');
     res.json({ success: true, data: products });
   } catch (err) {
     next(err);
@@ -77,6 +90,7 @@ async function create(req, res, next) {
       .single();
 
     if (error) throw error;
+    cache.del(LIST_CACHE_KEY); // 新增後清除列表快取
     res.status(201).json({ success: true, data });
   } catch (err) {
     next(err);
@@ -110,6 +124,7 @@ async function update(req, res, next) {
       throw error;
     }
     if (!data) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到指定產品' } });
+    cache.del(LIST_CACHE_KEY); // 更新後清除列表快取
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -121,6 +136,7 @@ async function remove(req, res, next) {
     const { id } = req.params;
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) throw error;
+    cache.del(LIST_CACHE_KEY); // 刪除後清除列表快取
     res.json({ success: true });
   } catch (err) {
     next(err);
@@ -199,6 +215,7 @@ async function duplicate(req, res, next) {
       if (ptErr) throw ptErr;
     }
 
+    cache.del(LIST_CACHE_KEY); // 複製後清除列表快取
     res.status(201).json({ success: true, data: newProduct });
   } catch (err) {
     next(err);
