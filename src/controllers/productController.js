@@ -2,8 +2,10 @@ const supabase = require('../config/database');
 const Joi      = require('joi');
 const cache    = require('../utils/cache');
 
-const LIST_CACHE_KEY = 'products:list';
-const LIST_TTL_MS    = 30_000; // 30 秒
+const LIST_CACHE_KEY     = 'products:list';
+const LIST_TTL_MS        = 5 * 60_000; // 5 分鐘（寫入操作會主動清除，不必擔心過期）
+const PRODUCT_CACHE_PFX  = 'products:item:';
+const PRODUCT_TTL_MS     = 5 * 60_000; // 5 分鐘
 
 const schema = Joi.object({
   name:        Joi.string().trim().min(1).max(255).required(),
@@ -20,10 +22,12 @@ async function list(req, res, next) {
       return res.json({ success: true, data: cached });
     }
 
+    // 注意：不選 cover_image（大型 TOAST 欄位），避免 DB 讀取延遲
+    // 圖片改由前端在卡片渲染後以個別 GET /products/:id 延遲載入
     const { data, error } = await supabase
       .from('products')
       .select(`
-        id, name, description, cover_image, is_active, created_at,
+        id, name, description, is_active, created_at,
         cost_items(amount),
         price_tiers(id, is_active)
       `)
@@ -39,7 +43,7 @@ async function list(req, res, next) {
         id:          p.id,
         name:        p.name,
         description: p.description,
-        cover_image: p.cover_image,
+        // cover_image 不在此回傳（前端用 GET /products/:id 延遲載入）
         created_at:  p.created_at,
         total_cost:  totalCost,
         price_count: activePriceCount,
@@ -57,6 +61,12 @@ async function list(req, res, next) {
 async function get(req, res, next) {
   try {
     const { id } = req.params;
+
+    // 快取命中（含 cover_image 的完整產品資料）
+    const cacheKey = PRODUCT_CACHE_PFX + id;
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json({ success: true, data: cached });
+
     const { data, error } = await supabase
       .from('products')
       .select('id, name, description, cover_image, is_active, created_at, updated_at')
@@ -68,6 +78,7 @@ async function get(req, res, next) {
       throw error;
     }
     if (!data) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到指定產品' } });
+    cache.set(cacheKey, data, PRODUCT_TTL_MS);
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -124,7 +135,8 @@ async function update(req, res, next) {
       throw error;
     }
     if (!data) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到指定產品' } });
-    cache.del(LIST_CACHE_KEY); // 更新後清除列表快取
+    cache.del(LIST_CACHE_KEY);               // 更新後清除列表快取
+    cache.del(PRODUCT_CACHE_PFX + id);       // 清除個別產品快取
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -136,7 +148,8 @@ async function remove(req, res, next) {
     const { id } = req.params;
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) throw error;
-    cache.del(LIST_CACHE_KEY); // 刪除後清除列表快取
+    cache.del(LIST_CACHE_KEY);           // 刪除後清除列表快取
+    cache.del(PRODUCT_CACHE_PFX + id);  // 清除個別產品快取
     res.json({ success: true });
   } catch (err) {
     next(err);

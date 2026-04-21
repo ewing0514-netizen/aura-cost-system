@@ -1,5 +1,26 @@
 // 頁面 1：產品列表 + Dashboard 全域成本
 
+/**
+ * 在卡片渲染完後，背景批量載入封面圖片
+ * 對所有產品並行呼叫 GET /products/:id，取得 cover_image 後更新 DOM
+ * （個別產品有 5 分鐘後端快取，重複瀏覽幾乎瞬間）
+ */
+async function lazyLoadCoverImages(products) {
+  await Promise.allSettled(
+    products.map(async p => {
+      try {
+        const full = await api.products.get(p.id);
+        if (!full.cover_image) return; // 此產品無封面圖，保留 placeholder
+        const zone = document.getElementById(`cover-zone-${p.id}`);
+        if (!zone) return; // 卡片已被移除（例如使用者切換頁面）
+        zone.innerHTML = `<img src="${full.cover_image}" alt="${escapeHtml(full.name)}" class="w-full h-full object-cover" loading="lazy" decoding="async">`;
+      } catch {
+        // 載入失敗就保留 placeholder，靜默忽略
+      }
+    })
+  );
+}
+
 async function renderProductList() {
   const main = document.getElementById('app');
   main.innerHTML = `
@@ -72,9 +93,15 @@ async function renderProductList() {
             toast(err.message, 'error');
           }
         };
-        document.getElementById(`edit-${p.id}`).onclick = (e) => {
+        document.getElementById(`edit-${p.id}`).onclick = async (e) => {
           e.stopPropagation();
-          showProductModal(p, loadProducts);
+          // 編輯前先取得完整產品資料（含 cover_image）
+          try {
+            const full = await api.products.get(p.id);
+            showProductModal(full, loadProducts);
+          } catch {
+            showProductModal(p, loadProducts);
+          }
         };
         document.getElementById(`del-${p.id}`).onclick = async (e) => {
           e.stopPropagation();
@@ -89,6 +116,9 @@ async function renderProductList() {
           }
         };
       });
+
+      // 卡片渲染完後，在背景批量載入封面圖片（不阻塞初始顯示）
+      lazyLoadCoverImages(products);
     } catch (err) {
       container.innerHTML = `<div class="text-center py-12 text-red-500">載入失敗：${err.message}</div>`;
     }
@@ -480,18 +510,13 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
 
 function renderProductCard(p) {
   const cost = p.total_cost || 0;
-  const hasCover = !!p.cover_image;
 
   return `
     <div id="card-${p.id}" class="product-card bg-white border border-gray-200 rounded-xl overflow-hidden relative">
-      ${hasCover
-        ? `<div class="w-full overflow-hidden" style="aspect-ratio:1200/628">
-             <img src="${p.cover_image}" alt="${escapeHtml(p.name)}" class="w-full h-full object-cover" loading="lazy" decoding="async">
-           </div>`
-        : `<div class="w-full flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50" style="aspect-ratio:1200/628">
-             <span class="text-4xl opacity-40">📦</span>
-           </div>`
-      }
+      <!-- 封面圖佔位區：初始顯示 placeholder，lazyLoadCoverImages 載入後替換 -->
+      <div id="cover-zone-${p.id}" class="w-full flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50" style="aspect-ratio:1200/628">
+        <span class="text-4xl opacity-40">📦</span>
+      </div>
       <div class="absolute top-2 right-2 flex gap-1">
         <button id="dup-${p.id}" class="bg-white/80 backdrop-blur-sm text-gray-500 hover:text-emerald-600 p-1.5 rounded-lg shadow-sm border border-white/60" title="複製產品">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>

@@ -1,15 +1,18 @@
 require('dotenv').config();
 
-const express     = require('express');
-const cors        = require('cors');
-const path        = require('path');
-const routes      = require('./routes/index');
+const express      = require('express');
+const cors         = require('cors');
+const compression  = require('compression');
+const path         = require('path');
+const routes       = require('./routes/index');
 const errorHandler = require('./middleware/errorHandler');
 
 const PORT = process.env.PORT || 3000;
 
 const app = express();
 
+// gzip 壓縮所有回應（減少傳輸量約 60-80%）
+app.use(compression());
 app.use(cors());
 app.use(express.json({ limit: '5mb' })); // 支援 base64 封面圖片
 
