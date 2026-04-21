@@ -528,6 +528,7 @@ function renderProductCard(p) {
 function showProductModal(product, onSave) {
   const isEdit = !!product;
   let coverImageDataUrl = (isEdit && product.cover_image) ? product.cover_image : null;
+  let imageChanged = false; // 追蹤圖片是否有被使用者更動（新上傳或移除）
 
   const coverPreviewInner = coverImageDataUrl
     ? `<img id="p-img-display" src="${coverImageDataUrl}" class="w-full h-full object-cover rounded-xl">`
@@ -585,6 +586,7 @@ function showProductModal(product, onSave) {
     if (!file) return;
     try {
       coverImageDataUrl = await resizeImageToDataURL(file, 800, 418, 0.78);
+      imageChanged = true; // 使用者上傳了新圖片
       const preview = document.getElementById('p-img-preview');
       preview.innerHTML = `<img src="${coverImageDataUrl}" class="w-full h-full object-cover">`;
       const removeBtn = document.getElementById('p-img-remove');
@@ -604,6 +606,7 @@ function showProductModal(product, onSave) {
 
   function removeCoverImage() {
     coverImageDataUrl = null;
+    imageChanged = true; // 使用者主動移除圖片
     const preview = document.getElementById('p-img-preview');
     preview.innerHTML = `
       <div class="flex flex-col items-center justify-center h-full gap-2 text-gray-400 py-6">
@@ -623,8 +626,12 @@ function showProductModal(product, onSave) {
     const body = {
       name:        document.getElementById('p-name').value.trim(),
       description: document.getElementById('p-desc').value.trim(),
-      cover_image: coverImageDataUrl,
     };
+    // 編輯模式：只有在使用者明確更改圖片時才帶 cover_image（避免每次編輯都重傳大型 base64）
+    // 新增模式：永遠帶（可能是 null 或有值）
+    if (!isEdit || imageChanged) {
+      body.cover_image = coverImageDataUrl;
+    }
     const submitBtn = document.querySelector('#product-form button[type="submit"]');
     const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
