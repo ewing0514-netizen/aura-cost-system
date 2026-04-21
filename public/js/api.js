@@ -36,7 +36,21 @@ async function request(method, path, body) {
     if (cached !== null) return cached;
   }
 
-  const res = await fetch(BASE + path, opts);
+  // 15 秒逾時保護，防止部署重啟期間 fetch 永久懸掛
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+  opts.signal = controller.signal;
+
+  let res;
+  try {
+    res = await fetch(BASE + path, opts);
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('請求逾時，請重新整理頁面');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+
   const json = await res.json();
 
   if (!json.success) {
