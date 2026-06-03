@@ -292,68 +292,101 @@ async function renderPaymentList() {
   async function loadStats(orders, incomes) {
     const container = document.getElementById('payment-stats');
     const now = new Date();
+    const monthLabel = `${now.getFullYear()}/${now.getMonth() + 1}`;
     const isThisMonth = (dateStr) => {
       if (!dateStr) return false;
       const d = new Date(dateStr);
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     };
 
-    // ── 本月收入（用 received_at 入帳日；若未填則 fallback 用 income_date）──
-    const monthIncomes = incomes.filter(i => !i.cancelled && isThisMonth(i.received_at || i.income_date));
+    // ── 本月收入（income_date 或 received_at 任一在本月即算）──
+    const monthIncomes = incomes.filter(i =>
+      !i.cancelled && (isThisMonth(i.income_date) || isThisMonth(i.received_at))
+    );
     const monthIncomeTotal   = monthIncomes.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
     const monthIncomePartner = monthIncomes.reduce((s, i) => s + parseFloat(i.partner_share || 0), 0);
     const monthIncomeSelf    = monthIncomes.reduce((s, i) => s + parseFloat(i.self_share || 0), 0);
 
-    // ── 本月支出（用 balance_paid_at 完成日；fallback 用 order_date）──
-    const monthOrders = orders.filter(o => !o.cancelled && isThisMonth(o.balance_paid_at || o.order_date));
+    // ── 累計收入（不分月份，所有未取消的）──
+    const allIncomes        = incomes.filter(i => !i.cancelled);
+    const allIncomeTotal    = allIncomes.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+    const allIncomePartner  = allIncomes.reduce((s, i) => s + parseFloat(i.partner_share || 0), 0);
+    const allIncomeSelf     = allIncomes.reduce((s, i) => s + parseFloat(i.self_share || 0), 0);
+
+    // ── 本月支出（balance_paid_at 或 order_date 任一在本月即算）──
+    const monthOrders = orders.filter(o =>
+      !o.cancelled && (isThisMonth(o.order_date) || isThisMonth(o.balance_paid_at))
+    );
     const monthExpenseTotal = monthOrders.reduce((s, o) =>
       s + (parseFloat(o.actual_total_cost) || parseFloat(o.total_amount) || 0), 0);
 
-    // 本月淨利
+    // ── 累計支出 ──
+    const allOrdersActive = orders.filter(o => !o.cancelled);
+    const allExpenseTotal = allOrdersActive.reduce((s, o) =>
+      s + (parseFloat(o.actual_total_cost) || parseFloat(o.total_amount) || 0), 0);
+
+    // 本月淨利 + 累計淨利
     const monthNet = monthIncomeTotal - monthExpenseTotal;
-    const netColor = monthNet >= 0 ? 'text-emerald-700' : 'text-red-600';
+    const allNet   = allIncomeTotal   - allExpenseTotal;
+    const netColor    = monthNet >= 0 ? 'text-emerald-700' : 'text-rose-600';
+    const netColorAll = allNet >= 0   ? 'text-emerald-600' : 'text-rose-500';
 
     // 待付總額（訂金 + 尾款）
     const totalPendingDeposit = orders.filter(o => o.status === 'pending').reduce((s, o) => s + parseFloat(o.deposit_amount || 0), 0);
     const totalPendingBalance = orders.filter(o => o.status === 'deposit_paid').reduce((s, o) => s + parseFloat(o.balance_amount || 0), 0);
     const totalPending        = totalPendingDeposit + totalPendingBalance;
 
-    // 你的份額（淨利按 50/50 default 拆分）
-    // 收入按各筆 split_pct，支出 50/50（簡化）
+    // 分潤拆分（本月）
     const monthExpenseHalf = monthExpenseTotal / 2;
     const monthSelfNet     = monthIncomeSelf    - monthExpenseHalf;
     const monthPartnerNet  = monthIncomePartner - monthExpenseHalf;
+    // 分潤拆分（累計）
+    const allExpenseHalf   = allExpenseTotal / 2;
+    const allSelfNet       = allIncomeSelf    - allExpenseHalf;
+    const allPartnerNet    = allIncomePartner - allExpenseHalf;
 
     const netDeltaColor = monthNet >= 0 ? 'text-emerald-700' : 'text-rose-600';
 
     container.innerHTML = `
       <div class="glass-stat glass-stat-income">
-        <div class="flex items-center gap-1.5 text-emerald-700 text-xs font-semibold tracking-wide mb-1.5">
-          <span class="text-base">💰</span>本月收入
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-1.5 text-emerald-700 text-xs font-semibold tracking-wide">
+            <span class="text-base">💰</span>本月收入
+          </div>
+          <span class="text-[10px] text-emerald-600/60 font-mono">${monthLabel}</span>
         </div>
         <div class="num-display text-2xl text-emerald-800">NT$${fmtMoney(monthIncomeTotal)}</div>
-        <div class="text-[11px] text-emerald-600/70 mt-1.5">${monthIncomes.length} 筆已入帳</div>
+        <div class="text-[11px] text-emerald-600/70 mt-1.5">${monthIncomes.length} 筆 · 累計 <span class="font-semibold">NT$${fmtMoney(allIncomeTotal)}</span></div>
       </div>
 
       <div class="glass-stat glass-stat-expense">
-        <div class="flex items-center gap-1.5 text-rose-700 text-xs font-semibold tracking-wide mb-1.5">
-          <span class="text-base">💸</span>本月支出
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-1.5 text-rose-700 text-xs font-semibold tracking-wide">
+            <span class="text-base">💸</span>本月支出
+          </div>
+          <span class="text-[10px] text-rose-600/60 font-mono">${monthLabel}</span>
         </div>
         <div class="num-display text-2xl text-rose-700">NT$${fmtMoney(monthExpenseTotal)}</div>
-        <div class="text-[11px] text-rose-500/70 mt-1.5">${monthOrders.length} 筆（含其他支出 + 運營費）</div>
+        <div class="text-[11px] text-rose-500/70 mt-1.5">${monthOrders.length} 筆 · 累計 <span class="font-semibold">NT$${fmtMoney(allExpenseTotal)}</span></div>
       </div>
 
       <div class="glass-stat glass-stat-net">
-        <div class="flex items-center gap-1.5 text-indigo-700 text-xs font-semibold tracking-wide mb-1.5">
-          <span class="text-base">📊</span>本月淨利
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-1.5 text-indigo-700 text-xs font-semibold tracking-wide">
+            <span class="text-base">📊</span>本月淨利
+          </div>
+          <span class="text-[10px] text-indigo-600/60 font-mono">${monthLabel}</span>
         </div>
         <div class="num-display text-2xl ${netDeltaColor}">NT$${fmtMoney(monthNet)}</div>
-        <div class="text-[11px] text-indigo-500/70 mt-1.5">收入 − 支出</div>
+        <div class="text-[11px] text-indigo-500/70 mt-1.5">收入 − 支出 · 累計 <span class="${netColorAll} font-semibold">NT$${fmtMoney(allNet)}</span></div>
       </div>
 
       <div class="glass-stat glass-stat-partner">
-        <div class="flex items-center gap-1.5 text-purple-700 text-xs font-semibold tracking-wide mb-1.5">
-          <span class="text-base">🤝</span>合夥人 / 你（本月）
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-1.5 text-purple-700 text-xs font-semibold tracking-wide">
+            <span class="text-base">🤝</span>合夥人 / 你
+          </div>
+          <span class="text-[10px] text-purple-600/60 font-mono">${monthLabel}</span>
         </div>
         <div class="space-y-0.5">
           <div class="flex items-baseline justify-between gap-2">
@@ -365,7 +398,7 @@ async function renderPaymentList() {
             <span class="num-display text-sm text-indigo-700">NT$${fmtMoney(monthSelfNet)}</span>
           </div>
         </div>
-        <div class="text-[10px] text-purple-500/70 mt-1.5">支出 50/50 攤；收入按各筆%</div>
+        <div class="text-[10px] text-purple-500/70 mt-1.5">累計：合夥人 <span class="font-semibold">NT$${fmtMoney(allPartnerNet)}</span> · 你 <span class="font-semibold">NT$${fmtMoney(allSelfNet)}</span></div>
       </div>
 
       ${totalPending > 0 ? `
