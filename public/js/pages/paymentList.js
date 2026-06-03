@@ -42,6 +42,9 @@ async function renderPaymentList() {
           </div>
         </div>
 
+        <!-- 月份切換器 -->
+        <div id="month-selector" class="mb-4"></div>
+
         <!-- Stats 卡片 -->
         <div id="payment-stats" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div class="flex justify-center py-6 col-span-2 md:col-span-4"><div class="spinner"></div></div>
@@ -88,6 +91,13 @@ async function renderPaymentList() {
   let allOrders   = [];
   let allIncomes  = [];
   let allSuppliers = [];
+
+  // 月份篩選 state — null = 預設用瀏覽器當月，'all' = 累計，其他 = 'YYYY-MM'
+  let selectedMonth = null;
+  const currentBrowserYM = (() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+  })();
 
   document.getElementById('btn-add-order').onclick    = () => showPurchaseOrderModal(null, refresh);
   document.getElementById('btn-add-income').onclick   = () => showIncomeModal(null, refresh);
@@ -289,20 +299,75 @@ async function renderPaymentList() {
       `;
   }
 
+  // 從資料中萃取所有出現過的月份（YYYY-MM）
+  function extractAvailableMonths(orders, incomes) {
+    const months = new Set();
+    for (const r of incomes) {
+      if (r.cancelled) continue;
+      if (r.income_date) months.add(r.income_date.slice(0, 7));
+      if (r.received_at) months.add(r.received_at.slice(0, 7));
+    }
+    for (const o of orders) {
+      if (o.cancelled) continue;
+      if (o.order_date)       months.add(o.order_date.slice(0, 7));
+      if (o.balance_paid_at)  months.add(o.balance_paid_at.slice(0, 7));
+      if (o.deposit_paid_at)  months.add(o.deposit_paid_at.slice(0, 7));
+    }
+    months.add(currentBrowserYM); // 一定包含當月
+    return Array.from(months).sort().reverse(); // 新到舊
+  }
+
+  function renderMonthSelector(orders, incomes) {
+    const wrap = document.getElementById('month-selector');
+    if (!wrap) return;
+    const months = extractAvailableMonths(orders, incomes);
+    const activeKey = selectedMonth === 'all' ? 'all' : (selectedMonth || currentBrowserYM);
+
+    wrap.innerHTML = `
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs text-slate-500 font-semibold tracking-wide">📅 檢視期間：</span>
+        <div class="pill-tab-bar">
+          <button data-month="all" class="month-pill pill-tab ${activeKey === 'all' ? 'active' : ''}">全部累計</button>
+          ${months.map(m => `
+            <button data-month="${m}" class="month-pill pill-tab ${activeKey === m ? 'active' : ''}">
+              ${m.replace('-', '/')}${m === currentBrowserYM ? ' ⌃' : ''}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    wrap.querySelectorAll('.month-pill').forEach(btn => {
+      btn.onclick = () => {
+        selectedMonth = btn.dataset.month;
+        loadStats(allOrders, allIncomes);
+      };
+    });
+  }
+
   async function loadStats(orders, incomes) {
     const container = document.getElementById('payment-stats');
-    const now = new Date();
-    const monthLabel = `${now.getFullYear()}/${now.getMonth() + 1}`;
-    const isThisMonth = (dateStr) => {
-      if (!dateStr) return false;
-      const d = new Date(dateStr);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+
+    // 先渲染月份切換器
+    renderMonthSelector(orders, incomes);
+
+    // 決定要篩選的月份（'all' = 不篩選，其他 = YYYY-MM）
+    const isAll = selectedMonth === 'all';
+    const filterYM = isAll ? null : (selectedMonth || currentBrowserYM);
+    const monthLabel = isAll ? '累計' : filterYM.replace('-', '/');
+    const periodTitle = isAll ? '累計' : '本月';
+
+    const matchYM = (dateStr) => {
+      if (!dateStr || !filterYM) return false;
+      return dateStr.slice(0, 7) === filterYM;
     };
 
-    // ── 本月收入（income_date 或 received_at 任一在本月即算）──
-    const monthIncomes = incomes.filter(i =>
-      !i.cancelled && (isThisMonth(i.income_date) || isThisMonth(i.received_at))
-    );
+    // ── 本月收入（income_date 或 received_at 任一在本月即算；累計則全收）──
+    const monthIncomes = incomes.filter(i => {
+      if (i.cancelled) return false;
+      if (isAll) return true;
+      return matchYM(i.income_date) || matchYM(i.received_at);
+    });
     const monthIncomeTotal   = monthIncomes.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
     const monthIncomePartner = monthIncomes.reduce((s, i) => s + parseFloat(i.partner_share || 0), 0);
     const monthIncomeSelf    = monthIncomes.reduce((s, i) => s + parseFloat(i.self_share || 0), 0);
@@ -313,10 +378,12 @@ async function renderPaymentList() {
     const allIncomePartner  = allIncomes.reduce((s, i) => s + parseFloat(i.partner_share || 0), 0);
     const allIncomeSelf     = allIncomes.reduce((s, i) => s + parseFloat(i.self_share || 0), 0);
 
-    // ── 本月支出（balance_paid_at 或 order_date 任一在本月即算）──
-    const monthOrders = orders.filter(o =>
-      !o.cancelled && (isThisMonth(o.order_date) || isThisMonth(o.balance_paid_at))
-    );
+    // ── 本月支出（order_date 或 balance_paid_at 任一在本月即算；累計則全收）──
+    const monthOrders = orders.filter(o => {
+      if (o.cancelled) return false;
+      if (isAll) return true;
+      return matchYM(o.order_date) || matchYM(o.balance_paid_at);
+    });
     const monthExpenseTotal = monthOrders.reduce((s, o) =>
       s + (parseFloat(o.actual_total_cost) || parseFloat(o.total_amount) || 0), 0);
 
@@ -351,34 +418,34 @@ async function renderPaymentList() {
       <div class="glass-stat glass-stat-income">
         <div class="flex items-center justify-between mb-1.5">
           <div class="flex items-center gap-1.5 text-emerald-700 text-xs font-semibold tracking-wide">
-            <span class="text-base">💰</span>本月收入
+            <span class="text-base">💰</span>${periodTitle}收入
           </div>
           <span class="text-[10px] text-emerald-600/60 font-mono">${monthLabel}</span>
         </div>
         <div class="num-display text-2xl text-emerald-800">NT$${fmtMoney(monthIncomeTotal)}</div>
-        <div class="text-[11px] text-emerald-600/70 mt-1.5">${monthIncomes.length} 筆 · 累計 <span class="font-semibold">NT$${fmtMoney(allIncomeTotal)}</span></div>
+        <div class="text-[11px] text-emerald-600/70 mt-1.5">${monthIncomes.length} 筆${isAll ? '' : ` · 累計 <span class="font-semibold">NT$${fmtMoney(allIncomeTotal)}</span>`}</div>
       </div>
 
       <div class="glass-stat glass-stat-expense">
         <div class="flex items-center justify-between mb-1.5">
           <div class="flex items-center gap-1.5 text-rose-700 text-xs font-semibold tracking-wide">
-            <span class="text-base">💸</span>本月支出
+            <span class="text-base">💸</span>${periodTitle}支出
           </div>
           <span class="text-[10px] text-rose-600/60 font-mono">${monthLabel}</span>
         </div>
         <div class="num-display text-2xl text-rose-700">NT$${fmtMoney(monthExpenseTotal)}</div>
-        <div class="text-[11px] text-rose-500/70 mt-1.5">${monthOrders.length} 筆 · 累計 <span class="font-semibold">NT$${fmtMoney(allExpenseTotal)}</span></div>
+        <div class="text-[11px] text-rose-500/70 mt-1.5">${monthOrders.length} 筆${isAll ? '' : ` · 累計 <span class="font-semibold">NT$${fmtMoney(allExpenseTotal)}</span>`}</div>
       </div>
 
       <div class="glass-stat glass-stat-net">
         <div class="flex items-center justify-between mb-1.5">
           <div class="flex items-center gap-1.5 text-indigo-700 text-xs font-semibold tracking-wide">
-            <span class="text-base">📊</span>本月淨利
+            <span class="text-base">📊</span>${periodTitle}淨利
           </div>
           <span class="text-[10px] text-indigo-600/60 font-mono">${monthLabel}</span>
         </div>
         <div class="num-display text-2xl ${netDeltaColor}">NT$${fmtMoney(monthNet)}</div>
-        <div class="text-[11px] text-indigo-500/70 mt-1.5">收入 − 支出 · 累計 <span class="${netColorAll} font-semibold">NT$${fmtMoney(allNet)}</span></div>
+        <div class="text-[11px] text-indigo-500/70 mt-1.5">收入 − 支出${isAll ? '' : ` · 累計 <span class="${netColorAll} font-semibold">NT$${fmtMoney(allNet)}</span>`}</div>
       </div>
 
       <div class="glass-stat glass-stat-partner">
@@ -398,7 +465,7 @@ async function renderPaymentList() {
             <span class="num-display text-sm text-indigo-700">NT$${fmtMoney(monthSelfNet)}</span>
           </div>
         </div>
-        <div class="text-[10px] text-purple-500/70 mt-1.5">累計：合夥人 <span class="font-semibold">NT$${fmtMoney(allPartnerNet)}</span> · 你 <span class="font-semibold">NT$${fmtMoney(allSelfNet)}</span></div>
+        ${isAll ? '' : `<div class="text-[10px] text-purple-500/70 mt-1.5">累計：合夥人 <span class="font-semibold">NT$${fmtMoney(allPartnerNet)}</span> · 你 <span class="font-semibold">NT$${fmtMoney(allSelfNet)}</span></div>`}
       </div>
 
       ${totalPending > 0 ? `
