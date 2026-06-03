@@ -24,33 +24,38 @@ async function lazyLoadCoverImages(products) {
 async function renderProductList() {
   const main = document.getElementById('app');
   main.innerHTML = `
-    <div class="max-w-5xl mx-auto px-4 py-8">
-      <!-- 標題列 -->
-      <div class="flex items-center justify-between mb-8">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Aúra 成本系統</h1>
-          <p class="text-gray-500 text-sm mt-1">管理你的產品成本與定價策略</p>
+    <div class="ambient-bg font-apple">
+      <div class="max-w-5xl mx-auto px-4 py-10">
+        <!-- 標題列 -->
+        <div class="section-header">
+          <div>
+            <h1 class="h-display">Aúra 成本系統</h1>
+            <p class="section-subtitle">管理你的產品成本與定價策略</p>
+          </div>
+          <button id="btn-add-product" class="btn-apple-primary">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            新增產品
+          </button>
         </div>
-        <button id="btn-add-product" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 text-sm font-medium">
-          <span class="text-lg leading-none">+</span> 新增產品
-        </button>
-      </div>
 
-      <!-- 產品列表 -->
-      <div id="product-list-content">
-        <div class="flex justify-center py-12"><div class="spinner"></div></div>
-      </div>
+        <!-- 產品列表 -->
+        <div id="product-list-content">
+          <div class="flex justify-center py-12"><div class="spinner"></div></div>
+        </div>
 
-      <!-- 分隔線 -->
-      <div class="my-10 border-t border-gray-200"></div>
+        <!-- 分隔線 -->
+        <div class="glass-divider my-10"></div>
 
-      <!-- 公司層級成本 Dashboard -->
-      <div class="mb-4">
-        <h2 class="text-lg font-bold text-gray-900">公司營運成本</h2>
-        <p class="text-gray-500 text-sm mt-0.5">適用於整體業務的固定支出，不分配給單一產品</p>
-      </div>
-      <div id="global-costs-content">
-        <div class="flex justify-center py-10"><div class="spinner"></div></div>
+        <!-- 公司層級成本 Dashboard -->
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">公司營運成本</h2>
+            <p class="section-subtitle">適用於整體業務的固定支出，不分配給單一產品</p>
+          </div>
+        </div>
+        <div id="global-costs-content">
+          <div class="flex justify-center py-10"><div class="spinner"></div></div>
+        </div>
       </div>
     </div>
   `;
@@ -223,7 +228,7 @@ function renderGlobalGroupCard(groupKey, group, costs) {
                  <div class="flex-1 min-w-0">
                    <div class="flex items-center gap-1.5 flex-wrap">
                      <span class="text-sm font-medium text-gray-900">${escapeHtml(c.name)}</span>
-                     <span class="category-badge category-${c.category}">${categoryLabel(c.category)}</span>
+                     <span class="category-badge category-${c.category}">${escapeHtml(c.display_category || categoryLabel(c.category))}</span>
                      <span class="cost-type-badge cost-type-${c.cost_type || 'fixed'}">${c.cost_type === 'variable' ? '可變' : '固定'}</span>
                    </div>
                    ${c.note ? `<div class="text-xs text-gray-400 mt-0.5 truncate">${escapeHtml(c.note)}</div>` : ''}
@@ -236,6 +241,7 @@ function renderGlobalGroupCard(groupKey, group, costs) {
                        amount: parseFloat(c.amount),
                        amount_type: c.amount_type || 'fixed',
                        category: c.category,
+                       display_category: c.display_category || null,
                        cost_type: c.cost_type || 'fixed',
                        note: c.note || ''
                      })}'>編輯</button>
@@ -280,10 +286,19 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
   //   'other'       → CATEGORY_TO_GROUP['other']       = 'other'      ✓
   const CUSTOM_CAT_FALLBACK = { operations: 'fixed', marketing: 'advertising', other: 'other' };
 
-  function buildCategoryOptions(forGroupKey, selectedCat) {
+  function buildCategoryOptions(forGroupKey, selectedCat, selectedDisplayCat) {
     const cats = COST_GROUPS[forGroupKey]?.categories || [];
     const customCats = getCustomCats(forGroupKey);
-    const effective = (selectedCat && cats.includes(selectedCat)) ? selectedCat : cats[0];
+
+    // If editing an item with a custom display_category, try to match it to a saved custom cat
+    let selectedCcId = null;
+    if (selectedDisplayCat && customCats.length > 0) {
+      const matchedCc = customCats.find(cc => cc.label === selectedDisplayCat);
+      if (matchedCc) selectedCcId = matchedCc.id;
+    }
+
+    // Pre-select standard cat only when there's no matching custom cat
+    const effective = selectedCcId ? null : ((selectedCat && cats.includes(selectedCat)) ? selectedCat : cats[0]);
 
     let opts = cats.map(v =>
       `<option value="${v}" ${effective === v ? 'selected' : ''}>${CATEGORY_LABELS[v] || v}</option>`
@@ -292,7 +307,7 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
     if (customCats.length > 0) {
       opts += `<option disabled>────────</option>`;
       customCats.forEach(cc => {
-        opts += `<option value="cc:${cc.id}">⭐ ${cc.label}</option>`;
+        opts += `<option value="cc:${cc.id}" ${selectedCcId === cc.id ? 'selected' : ''}>⭐ ${cc.label}</option>`;
       });
     }
 
@@ -334,7 +349,7 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
       <div class="mb-3">
         <label class="block text-sm font-medium text-gray-700 mb-1">類別 <span class="text-red-500">*</span></label>
         <select id="g-cat" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          ${buildCategoryOptions(activeGroupKey, cost?.category)}
+          ${buildCategoryOptions(activeGroupKey, cost?.category, cost?.display_category)}
         </select>
         <div id="g-new-cat-row" class="hidden mt-2 flex items-center gap-2">
           <input id="g-new-cat-input" type="text" maxlength="20" placeholder="輸入類別名稱（最多20字）"
@@ -480,18 +495,30 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
   // 表單送出
   document.getElementById('global-cost-form').onsubmit = async (e) => {
     e.preventDefault();
-    // 自訂類別（cc:xxx）映射到 DB ENUM 值
+    // 自訂類別（cc:xxx）映射到 DB ENUM 值，並儲存原始顯示標籤
     const rawCat = catSel.value;
-    const resolvedCategory = rawCat.startsWith('cc:')
+    const isCustomCat = rawCat.startsWith('cc:');
+    const resolvedCategory = isCustomCat
       ? (CUSTOM_CAT_FALLBACK[activeGroupKey] || 'other')
       : rawCat;
+
+    // 若選擇的是自訂類別，取得其標籤存入 display_category
+    let displayCategory = null;
+    if (isCustomCat) {
+      const ccId = rawCat.slice(3); // 去除 'cc:' 前綴
+      const customCats = getCustomCats(activeGroupKey);
+      const found = customCats.find(cc => cc.id === ccId);
+      if (found) displayCategory = found.label;
+    }
+
     const body = {
-      name:        document.getElementById('g-name').value.trim(),
-      amount:      parseFloat(document.getElementById('g-amount').value),
-      amount_type: activeAmountType,
-      category:    resolvedCategory,
-      cost_type:   activeCostType,
-      note:        document.getElementById('g-note').value.trim(),
+      name:             document.getElementById('g-name').value.trim(),
+      amount:           parseFloat(document.getElementById('g-amount').value),
+      amount_type:      activeAmountType,
+      category:         resolvedCategory,
+      cost_type:        activeCostType,
+      note:             document.getElementById('g-note').value.trim(),
+      display_category: displayCategory,
     };
     try {
       if (isEdit) {
@@ -517,33 +544,39 @@ function renderProductCard(p) {
   const cost = p.total_cost || 0;
 
   return `
-    <div id="card-${p.id}" class="product-card bg-white border border-gray-200 rounded-xl overflow-hidden relative">
+    <div id="card-${p.id}" class="product-card-glass relative">
       <!-- 封面圖佔位區：初始顯示 placeholder，lazyLoadCoverImages 載入後替換 -->
       <div id="cover-zone-${p.id}" class="w-full flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50" style="aspect-ratio:1200/628">
         <span class="text-4xl opacity-40">📦</span>
       </div>
-      <div class="absolute top-2 right-2 flex gap-1">
-        <button id="dup-${p.id}" class="bg-white/80 backdrop-blur-sm text-gray-500 hover:text-emerald-600 p-1.5 rounded-lg shadow-sm border border-white/60" title="複製產品">
+      <div class="absolute top-2.5 right-2.5 flex gap-1">
+        <button id="dup-${p.id}" class="bg-white/85 backdrop-blur-md text-slate-500 hover:text-emerald-600 p-1.5 rounded-xl shadow-md border border-white/80 transition-all hover:shadow-lg hover:scale-105" title="複製產品">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
         </button>
-        <button id="edit-${p.id}" class="bg-white/80 backdrop-blur-sm text-gray-500 hover:text-indigo-600 p-1.5 rounded-lg shadow-sm border border-white/60" title="編輯">
+        <button id="edit-${p.id}" class="bg-white/85 backdrop-blur-md text-slate-500 hover:text-indigo-600 p-1.5 rounded-xl shadow-md border border-white/80 transition-all hover:shadow-lg hover:scale-105" title="編輯">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
         </button>
-        <button id="del-${p.id}" class="bg-white/80 backdrop-blur-sm text-gray-500 hover:text-red-600 p-1.5 rounded-lg shadow-sm border border-white/60" title="刪除">
+        <button id="del-${p.id}" class="bg-white/85 backdrop-blur-md text-slate-500 hover:text-red-600 p-1.5 rounded-xl shadow-md border border-white/80 transition-all hover:shadow-lg hover:scale-105" title="刪除">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
         </button>
       </div>
-      <div class="p-4">
-        <h3 class="font-semibold text-gray-900 mb-1">${escapeHtml(p.name)}</h3>
-        ${p.description ? `<p class="text-gray-400 text-xs mb-3 line-clamp-2">${escapeHtml(p.description)}</p>` : '<div class="mb-3"></div>'}
+      <div class="p-5">
+        <h3 class="font-semibold text-slate-900 mb-1" style="letter-spacing:-0.015em">${escapeHtml(p.name)}</h3>
+        ${p.description ? `<p class="text-slate-400 text-xs mb-3 line-clamp-2 leading-relaxed">${escapeHtml(p.description)}</p>` : '<div class="mb-3"></div>'}
         <div class="flex gap-4 text-sm">
           <div>
-            <div class="text-gray-400 text-xs">總成本</div>
-            <div class="font-semibold text-gray-900">${formatMoney(cost)}</div>
+            <div class="text-slate-400 text-[11px] mb-0.5">總成本</div>
+            <div class="num-display text-slate-900">${formatMoney(cost)}</div>
           </div>
           <div>
-            <div class="text-gray-400 text-xs">售價方案</div>
-            <div class="font-semibold text-gray-900">${p.price_count} 種</div>
+            <div class="text-slate-400 text-[11px] mb-0.5">常態價</div>
+            <div class="num-display ${p.normal_price != null ? 'text-indigo-600' : 'text-slate-300'}">
+              ${p.normal_price != null ? formatMoney(p.normal_price) : '—'}
+            </div>
+          </div>
+          <div>
+            <div class="text-slate-400 text-[11px] mb-0.5">售價方案</div>
+            <div class="num-display text-slate-900">${p.price_count} <span class="text-xs font-normal text-slate-400">種</span></div>
           </div>
         </div>
       </div>
@@ -589,11 +622,24 @@ function showProductModal(product, onSave) {
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           placeholder="例如：手工皂 A" required>
       </div>
-      <div class="mb-6">
+      <div class="mb-4">
         <label class="block text-sm font-medium text-gray-700 mb-1">描述（選填）</label>
         <textarea id="p-desc" rows="2"
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           placeholder="簡短說明這個產品">${isEdit ? escapeHtml(product.description || '') : ''}</textarea>
+      </div>
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-1">貨號 / SKU <span class="text-gray-400 text-xs font-normal">（選填）</span></label>
+        <div class="flex gap-2">
+          <input type="text" id="p-sku" value="${isEdit ? escapeHtml(product.sku || '') : ''}"
+            class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono tracking-wide"
+            placeholder="例如：GLI-4823" maxlength="100">
+          <button type="button" id="p-sku-gen"
+            class="flex-shrink-0 px-3 py-2 rounded-lg border border-gray-300 text-gray-600 text-xs font-medium hover:bg-gray-50 whitespace-nowrap">
+            🎲 自動生成
+          </button>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">用於庫存管理的唯一識別碼，可自行輸入或自動生成</p>
       </div>
       <div class="flex justify-end gap-2">
         <button type="button" id="modal-cancel" class="px-4 py-2 rounded-lg border text-gray-700 hover:bg-gray-50 text-sm">取消</button>
@@ -610,6 +656,20 @@ function showProductModal(product, onSave) {
     document.getElementById('p-img-input').click();
   });
   document.getElementById('p-name').focus();
+
+  // ── SKU 自動生成 ──────────────────────────────────────
+  document.getElementById('p-sku-gen').onclick = () => {
+    const nameVal = document.getElementById('p-name').value.trim();
+    // 取名稱中的英數字（前 3 碼），若全為中文則取前兩個字的首字拼音首字母縮寫（退而求其次用 PRD）
+    const prefix = nameVal
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toUpperCase()
+      .slice(0, 3)
+      .padEnd(3, 'X');
+    const num = String(Math.floor(1000 + Math.random() * 9000));
+    document.getElementById('p-sku').value = prefix + '-' + num;
+  };
+  // ─────────────────────────────────────────────────────
 
   document.getElementById('p-img-input').addEventListener('change', async (e) => {
     const file = e.target.files[0];
@@ -656,6 +716,7 @@ function showProductModal(product, onSave) {
     const body = {
       name:        document.getElementById('p-name').value.trim(),
       description: document.getElementById('p-desc').value.trim(),
+      sku:         document.getElementById('p-sku').value.trim() || null,
     };
     // 編輯模式：只有在使用者明確更改圖片時才帶 cover_image（避免每次編輯都重傳大型 base64）
     // 新增模式：永遠帶（可能是 null 或有值）

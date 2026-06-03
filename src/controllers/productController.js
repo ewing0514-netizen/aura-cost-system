@@ -11,6 +11,7 @@ const schema = Joi.object({
   name:        Joi.string().trim().min(1).max(255).required(),
   description: Joi.string().trim().allow('', null).optional(),
   cover_image: Joi.string().allow('', null).optional(),
+  sku:         Joi.string().trim().max(100).allow('', null).optional(),
 });
 
 async function list(req, res, next) {
@@ -29,7 +30,7 @@ async function list(req, res, next) {
       .select(`
         id, name, description, is_active, created_at,
         cost_items(amount),
-        price_tiers(id, is_active)
+        price_tiers(id, is_active, price_type, amount)
       `)
       .eq('is_active', true)
       .order('created_at', { ascending: false });
@@ -38,15 +39,20 @@ async function list(req, res, next) {
 
     const products = data.map(p => {
       const totalCost = p.cost_items.reduce((sum, c) => sum + parseFloat(c.amount), 0);
-      const activePriceCount = p.price_tiers.filter(pt => pt.is_active).length;
+      const activePriceTiers = p.price_tiers.filter(pt => pt.is_active);
+      const activePriceCount = activePriceTiers.length;
+      // 取第一個啟用的常態價（price_type = 'normal'）
+      const normalTier = activePriceTiers.find(pt => pt.price_type === 'normal');
+      const normalPrice = normalTier ? parseFloat(normalTier.amount) : null;
       return {
-        id:          p.id,
-        name:        p.name,
-        description: p.description,
+        id:           p.id,
+        name:         p.name,
+        description:  p.description,
         // cover_image 不在此回傳（前端用 GET /products/:id 延遲載入）
-        created_at:  p.created_at,
-        total_cost:  totalCost,
-        price_count: activePriceCount,
+        created_at:   p.created_at,
+        total_cost:   totalCost,
+        price_count:  activePriceCount,
+        normal_price: normalPrice,
       };
     });
 
@@ -69,7 +75,7 @@ async function get(req, res, next) {
 
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, description, cover_image, is_active, created_at, updated_at')
+      .select('id, name, description, cover_image, sku, is_active, created_at, updated_at')
       .eq('id', id)
       .single();
 
@@ -96,6 +102,7 @@ async function create(req, res, next) {
         name:        value.name,
         description: value.description || null,
         cover_image: value.cover_image || null,
+        sku:         value.sku || null,
       })
       .select()
       .single();
@@ -121,6 +128,10 @@ async function update(req, res, next) {
     // 只有明確傳入 cover_image 才更新（允許傳 null 來移除圖片）
     if ('cover_image' in req.body) {
       payload.cover_image = value.cover_image || null;
+    }
+    // sku：明確傳入才更新（允許傳 null 來清除）
+    if ('sku' in req.body) {
+      payload.sku = value.sku || null;
     }
 
     const { data, error } = await supabase
@@ -163,7 +174,7 @@ async function duplicate(req, res, next) {
     // 取得原始產品
     const { data: original, error: pErr } = await supabase
       .from('products')
-      .select('name, description, cover_image')
+      .select('name, description, cover_image, sku')
       .eq('id', id)
       .single();
 
@@ -178,6 +189,7 @@ async function duplicate(req, res, next) {
         name:        original.name + '（複製）',
         description: original.description || null,
         cover_image: original.cover_image || null,
+        sku:         original.sku ? original.sku + '-COPY' : null,
       })
       .select()
       .single();

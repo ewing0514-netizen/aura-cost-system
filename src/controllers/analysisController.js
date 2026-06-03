@@ -83,37 +83,94 @@ async function getProductAnalysis(req, res, next) {
 
 async function getSummary(req, res, next) {
   try {
-    const { data: products, error: pErr } = await supabase
-      .from('products')
-      .select('id, name')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
+    // 並行查詢：產品 / 利潤分析 View / 全域成本（product_id IS NULL）
+    const [
+      { data: products,      error: pErr },
+      { data: analysisRows,  error: aErr },
+      { data: globalCosts,   error: gErr },
+    ] = await Promise.all([
+      supabase.from('products').select('id, name').eq('is_active', true).order('created_at', { ascending: false }),
+      supabase.from('product_price_analysis').select('*'),
+      supabase.from('cost_items')
+        .select('id, name, amount, amount_type, category, cost_type, display_category')
+        .is('product_id', null),
+    ]);
 
     if (pErr) throw pErr;
-
-    const { data: analysisRows, error: aErr } = await supabase
-      .from('product_price_analysis')
-      .select('product_id, selling_price, profit_margin_pct, price_name');
-
     if (aErr) throw aErr;
+    if (gErr) throw gErr;
 
-    const summary = products.map(p => {
-      const rows = analysisRows.filter(r => r.product_id === p.id);
-      let bestMargin = null;
-      let bestPriceName = null;
-      for (const row of rows) {
-        const margin = parseFloat(row.profit_margin_pct);
-        if (bestMargin === null || margin > bestMargin) {
-          bestMargin = margin;
-          bestPriceName = row.price_name;
-        }
+    // ── 全域成本分組（行銷 / 營運）────────────────────────────
+    const MARKETING_CATS  = ['advertising', 'platform_fee', 'shipping_cost'];
+    const OPERATIONS_CATS = ['rent', 'utilities', 'equipment', 'fixed'];
+
+    const groupGlobals = (cats) => {
+      const items = (globalCosts || []).filter(c => cats.includes(c.category));
+      let fixed_total      = 0;
+      let percentage_total = 0;
+      for (const c of items) {
+        const amt = parseFloat(c.amount);
+        if (c.amount_type === 'percentage') percentage_total += amt;
+        else fixed_total += amt;
       }
       return {
-        product_id:       p.id,
-        product_name:     p.name,
-        price_count:      rows.length,
-        best_margin_pct:  bestMargin,
-        best_price_name:  bestPriceName,
+        fixed_total,
+        percentage_total,
+        items: items.map(c => ({
+          id:               c.id,
+          name:             c.name,
+          amount:           parseFloat(c.amount),
+          amount_type:      c.amount_type,
+          category:         c.category,
+          display_category: c.display_category,
+          cost_type:        c.cost_type,
+        })),
+      };
+    };
+
+    const marketing  = groupGlobals(MARKETING_CATS);
+    const operations = groupGlobals(OPERATIONS_CATS);
+    const otherGlobal = (globalCosts || []).filter(c => c.category === 'other');
+    const otherTotals = otherGlobal.reduce((acc, c) => {
+      const amt = parseFloat(c.amount);
+      if (c.amount_type === 'percentage') acc.percentage_total += amt;
+      else acc.fixed_total += amt;
+      return acc;
+    }, { fixed_total: 0, percentage_total: 0 });
+
+    // ── 處理每個產品 ──────────────────────────────────────────
+    const summary = products.map(p => {
+      const rows = analysisRows.filter(r => r.product_id === p.id);
+
+      const all_prices = rows.map(r => ({
+        price_tier_id:     r.price_tier_id,
+        price_name:        r.price_name,
+        price_type:        r.price_type,
+        selling_price:     parseFloat(r.selling_price),
+        total_cost:        parseFloat(r.total_cost),
+        variable_cost:     parseFloat(r.variable_cost),
+        total_fixed_cost:  parseFloat(r.total_fixed_cost),
+        profit_per_unit:   parseFloat(r.profit_per_unit),
+        profit_margin_pct: parseFloat(r.profit_margin_pct),
+        break_even_units:  r.break_even_units ? parseInt(r.break_even_units) : null,
+      }));
+
+      // 取最佳利潤率方案
+      let bestRow = null;
+      for (const r of all_prices) {
+        if (!bestRow || r.profit_margin_pct > bestRow.profit_margin_pct) bestRow = r;
+      }
+
+      return {
+        product_id:           p.id,
+        product_name:         p.name,
+        price_count:          rows.length,
+        best_margin_pct:      bestRow ? bestRow.profit_margin_pct : null,
+        best_price_name:      bestRow ? bestRow.price_name : null,
+        best_selling_price:   bestRow ? bestRow.selling_price : null,
+        best_total_cost:      bestRow ? bestRow.total_cost : null,
+        best_profit_per_unit: bestRow ? bestRow.profit_per_unit : null,
+        all_prices,
       };
     });
 
@@ -130,6 +187,22 @@ async function getSummary(req, res, next) {
       success: true,
       data: {
         products: summary,
+        global_costs: {
+          marketing,
+          operations,
+          other: {
+            fixed_total:      otherTotals.fixed_total,
+            percentage_total: otherTotals.percentage_total,
+            items: otherGlobal.map(c => ({
+              id:          c.id,
+              name:        c.name,
+              amount:      parseFloat(c.amount),
+              amount_type: c.amount_type,
+              category:    c.category,
+              cost_type:   c.cost_type,
+            })),
+          },
+        },
         stats: {
           total: products.length,
           avgMargin,

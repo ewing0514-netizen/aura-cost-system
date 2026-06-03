@@ -9,29 +9,31 @@ async function renderProductDetail(productId) {
 
   const main = document.getElementById('app');
   main.innerHTML = `
-    <div class="max-w-4xl mx-auto px-4 py-8">
-      <div class="flex items-center gap-3 mb-6">
-        <button id="btn-back" class="text-gray-400 hover:text-gray-700">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-          </svg>
-        </button>
-        <div id="product-header-title" class="flex-1">
-          <div class="h-6 w-48 bg-gray-200 rounded animate-pulse"></div>
+    <div class="ambient-bg font-apple">
+      <div class="max-w-4xl mx-auto px-4 py-10">
+        <div class="flex items-center gap-3 mb-6">
+          <button id="btn-back" class="chip-btn chip-btn-primary text-base px-3 py-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <div id="product-header-title" class="flex-1">
+            <div class="h-6 w-48 bg-slate-200 rounded animate-pulse"></div>
+          </div>
         </div>
-      </div>
 
-      <!-- Tabs -->
-      <div class="border-b border-gray-200 mb-6">
-        <nav class="flex gap-6">
-          <button class="tab-btn pb-3 text-sm tab-active"   data-tab="costs">成本項目</button>
-          <button class="tab-btn pb-3 text-sm tab-inactive" data-tab="prices">售價設定</button>
-          <button class="tab-btn pb-3 text-sm tab-inactive" data-tab="analysis">損益分析</button>
-        </nav>
-      </div>
+        <!-- Tabs (pill style) -->
+        <div class="flex justify-start mb-6 overflow-x-auto pb-1">
+          <div class="pill-tab-bar">
+            <button class="tab-btn pill-tab active" data-tab="costs">成本項目</button>
+            <button class="tab-btn pill-tab" data-tab="prices">售價設定</button>
+            <button class="tab-btn pill-tab" data-tab="analysis">損益分析</button>
+          </div>
+        </div>
 
-      <div id="tab-content">
-        <div class="flex justify-center py-12"><div class="spinner"></div></div>
+        <div id="tab-content">
+          <div class="flex justify-center py-12"><div class="spinner"></div></div>
+        </div>
       </div>
     </div>
   `;
@@ -42,19 +44,19 @@ async function renderProductDetail(productId) {
   try {
     const product = await api.products.get(productId);
     document.getElementById('product-header-title').innerHTML = `
-      <h1 class="text-xl font-bold text-gray-900">${escapeHtml(product.name)}</h1>
-      ${product.description ? `<p class="text-gray-500 text-sm">${escapeHtml(product.description)}</p>` : ''}
+      <h1 class="text-xl font-bold text-slate-900" style="letter-spacing:-0.02em">${escapeHtml(product.name)}</h1>
+      ${product.description ? `<p class="text-slate-500 text-sm mt-1">${escapeHtml(product.description)}</p>` : ''}
     `;
   } catch (e) {
     document.getElementById('product-header-title').innerHTML = `<span class="text-red-500">載入失敗</span>`;
   }
 
-  // Tab 切換
+  // Tab 切換（pill style）
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.onclick = () => {
       currentTab = btn.dataset.tab;
       document.querySelectorAll('.tab-btn').forEach(b => {
-        b.className = `tab-btn pb-3 text-sm ${b === btn ? 'tab-active' : 'tab-inactive'}`;
+        b.className = `tab-btn pill-tab${b === btn ? ' active' : ''}`;
       });
       loadTab(currentTab);
     };

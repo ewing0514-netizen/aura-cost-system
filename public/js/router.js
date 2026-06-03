@@ -12,6 +12,9 @@ function handleRoute() {
   } else if (hash === '#/payments') {
     renderPaymentList();
     updateNav('payments');
+  } else if (hash === '#/kols') {
+    renderKolList();
+    updateNav('kols');
   } else {
     const m = hash.match(/^#\/product\/([a-f0-9-]+)$/);
     if (m) {
@@ -26,10 +29,7 @@ function handleRoute() {
 
 function updateNav(active) {
   document.querySelectorAll('[data-nav]').forEach(el => {
-    const isActive = el.dataset.nav === active;
-    el.className = isActive
-      ? 'flex items-center gap-1.5 text-sm font-medium text-indigo-600 px-3 py-1.5 rounded-lg bg-indigo-50'
-      : 'flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-50';
+    el.classList.toggle('active', el.dataset.nav === active);
   });
 }
 

@@ -340,3 +340,466 @@ tr:hover td { background: #f9fafb; }
   border-color: #818cf8;
   background: #f0f0ff;
 }
+
+/* ================================================================
+   Apple Liquid Glass — 進階設計系統
+   ================================================================ */
+
+/* SF Pro 字體堆疊 + 細緻間距 */
+.font-apple {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Noto Sans TC", sans-serif;
+  letter-spacing: -0.015em;
+}
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* 環境光背景（柔和的色彩漸層 + 模糊光球）*/
+.ambient-bg {
+  position: relative;
+  isolation: isolate;
+}
+.ambient-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(70% 40% at 12% 8%,  rgba(167, 243, 208, 0.45) 0%, transparent 60%),
+    radial-gradient(60% 50% at 88% 14%, rgba(254, 202, 202, 0.40) 0%, transparent 60%),
+    radial-gradient(55% 40% at 50% 90%, rgba(199, 210, 254, 0.38) 0%, transparent 60%),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  z-index: -1;
+  filter: blur(40px);
+  transform: scale(1.05);
+}
+
+/* 通用毛玻璃卡片 */
+.glass-card {
+  background: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 22px;
+  box-shadow:
+    0 8px 28px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.03);
+  transition: box-shadow 0.25s, transform 0.2s;
+}
+.glass-card:hover {
+  box-shadow:
+    0 14px 38px rgba(15, 23, 42, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* 統計卡（更輕、更小弧度）*/
+.glass-stat {
+  background: rgba(255, 255, 255, 0.70);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.80);
+  padding: 18px 20px;
+  box-shadow:
+    0 6px 22px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90);
+  transition: transform 0.18s, box-shadow 0.2s;
+}
+.glass-stat:hover { transform: translateY(-2px); }
+
+/* 收入色調 — Apple Mint */
+.glass-stat-income {
+  background: linear-gradient(135deg,
+    rgba(209, 250, 229, 0.85) 0%,
+    rgba(167, 243, 208, 0.55) 100%);
+  border-color: rgba(110, 231, 183, 0.55);
+  box-shadow:
+    0 8px 28px rgba(16, 185, 129, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+/* 支出色調 — Apple Rose */
+.glass-stat-expense {
+  background: linear-gradient(135deg,
+    rgba(255, 228, 230, 0.85) 0%,
+    rgba(254, 205, 211, 0.55) 100%);
+  border-color: rgba(253, 164, 175, 0.55);
+  box-shadow:
+    0 8px 28px rgba(244, 63, 94, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+/* 淨利色調 — Apple Indigo */
+.glass-stat-net {
+  background: linear-gradient(135deg,
+    rgba(224, 231, 255, 0.85) 0%,
+    rgba(199, 210, 254, 0.55) 100%);
+  border-color: rgba(165, 180, 252, 0.55);
+  box-shadow:
+    0 8px 28px rgba(99, 102, 241, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+/* 分潤色調 — Apple Lavender */
+.glass-stat-partner {
+  background: linear-gradient(135deg,
+    rgba(243, 232, 255, 0.85) 0%,
+    rgba(233, 213, 255, 0.55) 100%);
+  border-color: rgba(196, 181, 253, 0.55);
+  box-shadow:
+    0 8px 28px rgba(139, 92, 246, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* 收入記錄卡 */
+.glass-record-income {
+  background: linear-gradient(135deg,
+    rgba(236, 253, 245, 0.78) 0%,
+    rgba(209, 250, 229, 0.55) 100%);
+  border: 1px solid rgba(110, 231, 183, 0.45);
+  border-radius: 20px;
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  box-shadow:
+    0 6px 22px rgba(16, 185, 129, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  transition: transform 0.18s, box-shadow 0.2s;
+}
+.glass-record-income:hover {
+  box-shadow:
+    0 12px 32px rgba(16, 185, 129, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+/* 支出記錄卡 */
+.glass-record-expense {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 20px;
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  box-shadow:
+    0 6px 22px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  transition: transform 0.18s, box-shadow 0.2s;
+}
+.glass-record-expense:hover {
+  box-shadow:
+    0 12px 32px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+/* 待付款項橫條 — 琥珀玻璃 */
+.glass-warning {
+  background: linear-gradient(135deg,
+    rgba(254, 243, 199, 0.78) 0%,
+    rgba(253, 230, 138, 0.55) 100%);
+  border: 1px solid rgba(252, 211, 77, 0.55);
+  border-radius: 16px;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* 藥丸式 Tab Bar */
+.pill-tab-bar {
+  display: inline-flex;
+  gap: 4px;
+  padding: 5px;
+  background: rgba(241, 245, 249, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+.pill-tab {
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+.pill-tab:hover { color: #1e293b; }
+.pill-tab.active {
+  background: white;
+  color: #0f172a;
+  font-weight: 600;
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.10),
+    0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+/* Apple 風按鈕 */
+.btn-apple-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  border: none;
+  cursor: pointer;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  box-shadow:
+    0 4px 14px rgba(99, 102, 241, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.btn-apple-primary:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 18px rgba(99, 102, 241, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30);
+}
+.btn-apple-primary:active { transform: translateY(0); }
+
+.btn-apple-income {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  border: none;
+  cursor: pointer;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow:
+    0 4px 14px rgba(16, 185, 129, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.btn-apple-income:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 18px rgba(16, 185, 129, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30);
+}
+.btn-apple-income:active { transform: translateY(0); }
+
+.btn-apple-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #334155;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  letter-spacing: -0.01em;
+  transition: all 0.18s;
+}
+.btn-apple-ghost:hover {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(203, 213, 225, 1);
+}
+
+/* 小型 chip 按鈕（編輯/刪除）*/
+.chip-btn {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: -0.01em;
+}
+.chip-btn:hover { background: white; color: #1e293b; }
+.chip-btn-danger:hover { color: #dc2626; background: rgba(254, 226, 226, 0.7); }
+.chip-btn-success:hover { color: #059669; background: rgba(209, 250, 229, 0.7); }
+.chip-btn-primary:hover { color: #4f46e5; background: rgba(224, 231, 255, 0.7); }
+
+/* 狀態 chip（精緻 pill）*/
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  border: 1px solid transparent;
+}
+.status-pending      { background: rgba(254, 215, 170, 0.55); color: #9a3412; border-color: rgba(253, 186, 116, 0.5); }
+.status-deposit-paid { background: rgba(253, 230, 138, 0.55); color: #854d0e; border-color: rgba(252, 211, 77, 0.5); }
+.status-completed    { background: rgba(187, 247, 208, 0.55); color: #166534; border-color: rgba(134, 239, 172, 0.5); }
+.status-cancelled    { background: rgba(229, 231, 235, 0.65); color: #4b5563; border-color: rgba(209, 213, 219, 0.5); }
+.status-pending-inc  { background: rgba(254, 240, 138, 0.55); color: #854d0e; border-color: rgba(253, 224, 71, 0.5); }
+.status-received     { background: rgba(167, 243, 208, 0.55); color: #065f46; border-color: rgba(110, 231, 183, 0.5); }
+
+/* 分類 chip — Apple 軟色調 */
+.category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  border: 1px solid transparent;
+}
+.cat-product-sales { background: rgba(191, 219, 254, 0.55); color: #1e3a8a; border-color: rgba(147, 197, 253, 0.5); }
+.cat-service       { background: rgba(216, 180, 254, 0.55); color: #581c87; border-color: rgba(192, 132, 252, 0.5); }
+.cat-consulting    { background: rgba(153, 246, 228, 0.55); color: #134e4a; border-color: rgba(94, 234, 212, 0.5); }
+.cat-other         { background: rgba(229, 231, 235, 0.65); color: #374151; border-color: rgba(209, 213, 219, 0.5); }
+
+/* 細微 divider */
+.glass-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(15, 23, 42, 0.08) 50%, transparent 100%);
+}
+
+/* 標題大字 */
+.h-display {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+/* 數字大字（金額）*/
+.num-display {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
+/* 更多按鈕色系 */
+.btn-apple-pink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  border: none;
+  cursor: pointer;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  box-shadow:
+    0 4px 14px rgba(236, 72, 153, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.btn-apple-pink:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 18px rgba(236, 72, 153, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30);
+}
+.btn-apple-pink:active { transform: translateY(0); }
+
+/* 柔和毛玻璃卡（內嵌用）*/
+.glass-card-soft {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.70);
+  border-radius: 18px;
+  box-shadow:
+    0 4px 18px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* 玻璃導覽列 */
+.glass-nav {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 1px 0 rgba(15, 23, 42, 0.04),
+    0 2px 12px rgba(15, 23, 42, 0.03);
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 11px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #475569;
+  letter-spacing: -0.01em;
+  transition: all 0.18s;
+  text-decoration: none;
+}
+.nav-link:hover { color: #0f172a; background: rgba(255, 255, 255, 0.6); }
+.nav-link.active {
+  background: rgba(99, 102, 241, 0.10);
+  color: #4f46e5;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.15);
+}
+
+/* 產品卡（升級版毛玻璃）*/
+.product-card-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  box-shadow:
+    0 6px 22px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  transition: transform 0.2s, box-shadow 0.25s;
+}
+.product-card-glass:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 16px 40px rgba(99, 102, 241, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+/* 全域成本分組卡升級色（重用既有 .group-* class）*/
+.glass-content-section {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.70);
+  border-radius: 22px;
+  padding: 20px;
+}
+
+/* 區段標題列 */
+.section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+.section-subtitle {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-top: 4px;
+  letter-spacing: -0.01em;
+}

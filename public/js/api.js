@@ -64,9 +64,11 @@ async function request(method, path, body) {
 
   // 非 GET 操作 → 清除受影響路徑的快取
   if (method !== 'GET') {
-    // 取路徑第一段（如 /products, /costs）作為失效 prefix
-    const prefix = 'GET' + path.split('/').slice(0, 3).join('/');
-    _cacheInvalidate(prefix);
+    // 取頂層資源名稱（如 'costs', 'products', 'payments'）作為失效 prefix
+    // 例：PUT /costs/123 → topLevel = 'costs' → 清除 'GET/costs' 與 'GET/costs/123' 等所有相關快取
+    // 舊寫法 slice(0,3) 對 /costs/:id 只產生 'GET/costs/:id'，導致列表快取未清除
+    const topLevel = path.split('/').filter(Boolean)[0] || '';
+    _cacheInvalidate('GET/' + topLevel);
   }
 
   return json.data;
@@ -121,13 +123,39 @@ const api = {
     delete: (id)      => request('DELETE', `/payments/suppliers/${id}`),
   },
 
-  // 採購訂單（貨款記錄）
+  // 採購訂單（支出）
   purchaseOrders: {
     list:   (qs)      => request('GET',    '/payments/purchase-orders' + (qs || '')),
     get:    (id)      => request('GET',    `/payments/purchase-orders/${id}`),
     create: (body)    => request('POST',   '/payments/purchase-orders', body),
     update: (id, b)   => request('PUT',    `/payments/purchase-orders/${id}`, b),
     delete: (id)      => request('DELETE', `/payments/purchase-orders/${id}`),
+  },
+
+  // 現金收入記錄
+  incomeRecords: {
+    list:   ()        => request('GET',    '/payments/income-records'),
+    get:    (id)      => request('GET',    `/payments/income-records/${id}`),
+    create: (body)    => request('POST',   '/payments/income-records', body),
+    update: (id, b)   => request('PUT',    `/payments/income-records/${id}`, b),
+    delete: (id)      => request('DELETE', `/payments/income-records/${id}`),
+  },
+
+  // KOL 團主
+  kols: {
+    list:   ()        => request('GET',    '/kols'),
+    create: (body)    => request('POST',   '/kols', body),
+    update: (id, b)   => request('PUT',    `/kols/${id}`, b),
+    delete: (id)      => request('DELETE', `/kols/${id}`),
+  },
+
+  // KOL 分潤紀錄
+  kolCommissions: {
+    list:   ()        => request('GET',    '/kols/commissions'),
+    get:    (id)      => request('GET',    `/kols/commissions/${id}`),
+    create: (body)    => request('POST',   '/kols/commissions', body),
+    update: (id, b)   => request('PUT',    `/kols/commissions/${id}`, b),
+    delete: (id)      => request('DELETE', `/kols/commissions/${id}`),
   },
 };
 

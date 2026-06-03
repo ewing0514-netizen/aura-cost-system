@@ -10,11 +10,19 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 成本項目類別
 -- ================================
 CREATE TYPE cost_category AS ENUM (
-  'material',   -- 原料/材料成本
-  'labor',      -- 人工/勞務成本
-  'packaging',  -- 包裝/運輸成本
-  'fixed',      -- 其他固定成本
-  'other'       -- 其他
+  'material',      -- 原料/材料成本
+  'labor',         -- 人工/勞務成本
+  'packaging',     -- 包裝/運輸成本
+  'fixed',         -- 其他固定成本
+  'other',         -- 其他
+  -- 營運成本
+  'rent',          -- 租金
+  'utilities',     -- 水電費
+  'equipment',     -- 設備折舊
+  -- 行銷成本
+  'advertising',   -- 廣告投放
+  'platform_fee',  -- 平台手續費
+  'shipping_cost'  -- 運費物流
 );
 
 -- ================================
