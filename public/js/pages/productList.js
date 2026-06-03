@@ -25,7 +25,7 @@ async function renderProductList() {
   const main = document.getElementById('app');
   main.innerHTML = `
     <div class="ambient-bg font-apple">
-      <div class="max-w-5xl mx-auto px-4 py-10">
+      <div class="max-w-6xl mx-auto px-4 py-10">
         <!-- 標題列 -->
         <div class="section-header">
           <div>
@@ -79,7 +79,7 @@ async function renderProductList() {
       }
 
       container.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           ${products.map(p => renderProductCard(p)).join('')}
         </div>
       `;
