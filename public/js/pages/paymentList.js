@@ -299,9 +299,17 @@ async function renderPaymentList() {
       `;
   }
 
-  // 從資料中萃取所有出現過的月份（YYYY-MM）
+  // 月份列表 — 過去 12 個月連續顯示 + 任何資料超出範圍的月份
   function extractAvailableMonths(orders, incomes) {
     const months = new Set();
+    const now = new Date();
+    // 過去 12 個月 + 當月 = 13 個月連續
+    for (let i = 0; i <= 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      months.add(ym);
+    }
+    // 補上超出範圍的歷史資料
     for (const r of incomes) {
       if (r.cancelled) continue;
       if (r.income_date) months.add(r.income_date.slice(0, 7));
@@ -313,7 +321,6 @@ async function renderPaymentList() {
       if (o.balance_paid_at)  months.add(o.balance_paid_at.slice(0, 7));
       if (o.deposit_paid_at)  months.add(o.deposit_paid_at.slice(0, 7));
     }
-    months.add(currentBrowserYM); // 一定包含當月
     return Array.from(months).sort().reverse(); // 新到舊
   }
 

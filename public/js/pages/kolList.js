@@ -69,13 +69,20 @@ async function renderKolList() {
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
   })();
 
-  // 萃取所有出現過的月份（YYYY-MM）— 僅以「開團開始日」為基準
+  // 萃取月份列表 — 過去 12 個月連續顯示 + 任何資料超出範圍的月份
   function extractKolMonths() {
     const months = new Set();
+    const now = new Date();
+    // 過去 12 個月 + 當月 = 13 個月連續
+    for (let i = 0; i <= 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      months.add(ym);
+    }
+    // 補上任何超出範圍的歷史資料（依開團開始日）
     for (const c of allCommissions) {
       if (c.start_date) months.add(c.start_date.slice(0, 7));
     }
-    months.add(currentBrowserYM);
     return Array.from(months).sort().reverse();
   }
 
