@@ -90,6 +90,7 @@ async function renderPaymentList() {
   let currentTab = 'all';
   let allOrders   = [];
   let allIncomes  = [];
+  let allKolCommissions = [];
   let allSuppliers = [];
 
   // 月份篩選 state — null = 預設用瀏覽器當月，'all' = 累計，其他 = 'YYYY-MM'
@@ -317,6 +318,11 @@ async function renderPaymentList() {
       if (o.balance_paid_at)  dataMonths.push(o.balance_paid_at.slice(0, 7));
       if (o.deposit_paid_at)  dataMonths.push(o.deposit_paid_at.slice(0, 7));
     }
+    // KOL 通路月份（依開團開始日 + 支付日）
+    for (const k of allKolCommissions) {
+      if (k.start_date) dataMonths.push(k.start_date.slice(0, 7));
+      if (k.paid_at)    dataMonths.push(k.paid_at.slice(0, 7));
+    }
 
     // 起點：2026/01；終點：當月與資料中最晚月份取大
     let cursor = new Date(2026, 0, 1);
@@ -389,15 +395,27 @@ async function renderPaymentList() {
       if (isAll) return true;
       return matchYM(i.income_date) || matchYM(i.received_at);
     });
-    const monthIncomeTotal   = monthIncomes.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
-    const monthIncomePartner = monthIncomes.reduce((s, i) => s + parseFloat(i.partner_share || 0), 0);
-    const monthIncomeSelf    = monthIncomes.reduce((s, i) => s + parseFloat(i.self_share || 0), 0);
+    let monthIncomeTotal   = monthIncomes.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+    let monthIncomePartner = monthIncomes.reduce((s, i) => s + parseFloat(i.partner_share || 0), 0);
+    let monthIncomeSelf    = monthIncomes.reduce((s, i) => s + parseFloat(i.self_share || 0), 0);
+
+    // ── KOL 通路本月銷售（依開團開始日）── 視為收入
+    const monthKolSales = allKolCommissions.filter(k => {
+      if (isAll) return true;
+      return matchYM(k.start_date);
+    });
+    const monthKolSalesTotal = monthKolSales.reduce((s, k) => s + parseFloat(k.sales_amount || 0), 0);
+    // KOL 收入預設 50/50 分潤（沒有 per-record split）
+    monthIncomeTotal   += monthKolSalesTotal;
+    monthIncomePartner += monthKolSalesTotal * 0.5;
+    monthIncomeSelf    += monthKolSalesTotal * 0.5;
 
     // ── 累計收入（不分月份，所有未取消的）──
-    const allIncomes        = incomes.filter(i => !i.cancelled);
-    const allIncomeTotal    = allIncomes.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
-    const allIncomePartner  = allIncomes.reduce((s, i) => s + parseFloat(i.partner_share || 0), 0);
-    const allIncomeSelf     = allIncomes.reduce((s, i) => s + parseFloat(i.self_share || 0), 0);
+    const allIncomeRecs     = incomes.filter(i => !i.cancelled);
+    const allKolSalesTotal  = allKolCommissions.reduce((s, k) => s + parseFloat(k.sales_amount || 0), 0);
+    const allIncomeTotal    = allIncomeRecs.reduce((s, i) => s + parseFloat(i.amount || 0), 0) + allKolSalesTotal;
+    const allIncomePartner  = allIncomeRecs.reduce((s, i) => s + parseFloat(i.partner_share || 0), 0) + allKolSalesTotal * 0.5;
+    const allIncomeSelf     = allIncomeRecs.reduce((s, i) => s + parseFloat(i.self_share || 0), 0) + allKolSalesTotal * 0.5;
 
     // ── 本月支出（order_date 或 balance_paid_at 任一在本月即算；累計則全收）──
     const monthOrders = orders.filter(o => {
@@ -405,13 +423,23 @@ async function renderPaymentList() {
       if (isAll) return true;
       return matchYM(o.order_date) || matchYM(o.balance_paid_at);
     });
-    const monthExpenseTotal = monthOrders.reduce((s, o) =>
+    let monthExpenseTotal = monthOrders.reduce((s, o) =>
       s + (parseFloat(o.actual_total_cost) || parseFloat(o.total_amount) || 0), 0);
+
+    // ── KOL 分潤支出（已付，依 paid_at）──
+    const monthKolPaid = allKolCommissions.filter(k => {
+      if (!k.paid) return false;
+      if (isAll) return true;
+      return matchYM(k.paid_at);
+    });
+    const monthKolCommissionPaid = monthKolPaid.reduce((s, k) => s + parseFloat(k.commission_amount || 0), 0);
+    monthExpenseTotal += monthKolCommissionPaid;
 
     // ── 累計支出 ──
     const allOrdersActive = orders.filter(o => !o.cancelled);
+    const allKolPaidTotal = allKolCommissions.filter(k => k.paid).reduce((s, k) => s + parseFloat(k.commission_amount || 0), 0);
     const allExpenseTotal = allOrdersActive.reduce((s, o) =>
-      s + (parseFloat(o.actual_total_cost) || parseFloat(o.total_amount) || 0), 0);
+      s + (parseFloat(o.actual_total_cost) || parseFloat(o.total_amount) || 0), 0) + allKolPaidTotal;
 
     // 本月淨利 + 累計淨利
     const monthNet = monthIncomeTotal - monthExpenseTotal;
@@ -419,10 +447,11 @@ async function renderPaymentList() {
     const netColor    = monthNet >= 0 ? 'text-emerald-700' : 'text-rose-600';
     const netColorAll = allNet >= 0   ? 'text-emerald-600' : 'text-rose-500';
 
-    // 待付總額（訂金 + 尾款）
+    // 待付總額（訂金 + 尾款 + KOL 未付分潤）
     const totalPendingDeposit = orders.filter(o => o.status === 'pending').reduce((s, o) => s + parseFloat(o.deposit_amount || 0), 0);
     const totalPendingBalance = orders.filter(o => o.status === 'deposit_paid').reduce((s, o) => s + parseFloat(o.balance_amount || 0), 0);
-    const totalPending        = totalPendingDeposit + totalPendingBalance;
+    const totalPendingKol     = allKolCommissions.filter(k => !k.paid).reduce((s, k) => s + parseFloat(k.commission_amount || 0), 0);
+    const totalPending        = totalPendingDeposit + totalPendingBalance + totalPendingKol;
 
     // 分潤拆分（本月）
     const monthExpenseHalf = monthExpenseTotal / 2;
@@ -444,7 +473,7 @@ async function renderPaymentList() {
           <span class="text-[10px] text-emerald-600/60 font-mono">${monthLabel}</span>
         </div>
         <div class="num-display text-2xl text-emerald-800">NT$${fmtMoney(monthIncomeTotal)}</div>
-        <div class="text-[11px] text-emerald-600/70 mt-1.5">${monthIncomes.length} 筆${isAll ? '' : ` · 累計 <span class="font-semibold">NT$${fmtMoney(allIncomeTotal)}</span>`}</div>
+        <div class="text-[11px] text-emerald-600/70 mt-1.5">${monthIncomes.length + monthKolSales.length} 筆${monthKolSalesTotal > 0 ? `（含 KOL 通路 <span class="font-semibold text-pink-600">NT$${fmtMoney(monthKolSalesTotal)}</span>）` : ''}${isAll ? '' : ` · 累計 <span class="font-semibold">NT$${fmtMoney(allIncomeTotal)}</span>`}</div>
       </div>
 
       <div class="glass-stat glass-stat-expense">
@@ -455,7 +484,7 @@ async function renderPaymentList() {
           <span class="text-[10px] text-rose-600/60 font-mono">${monthLabel}</span>
         </div>
         <div class="num-display text-2xl text-rose-700">NT$${fmtMoney(monthExpenseTotal)}</div>
-        <div class="text-[11px] text-rose-500/70 mt-1.5">${monthOrders.length} 筆${isAll ? '' : ` · 累計 <span class="font-semibold">NT$${fmtMoney(allExpenseTotal)}</span>`}</div>
+        <div class="text-[11px] text-rose-500/70 mt-1.5">${monthOrders.length + monthKolPaid.length} 筆${monthKolCommissionPaid > 0 ? `（含 KOL 分潤 <span class="font-semibold text-pink-600">NT$${fmtMoney(monthKolCommissionPaid)}</span>）` : ''}${isAll ? '' : ` · 累計 <span class="font-semibold">NT$${fmtMoney(allExpenseTotal)}</span>`}</div>
       </div>
 
       <div class="glass-stat glass-stat-net">
@@ -492,7 +521,7 @@ async function renderPaymentList() {
       ${totalPending > 0 ? `
         <div class="col-span-2 md:col-span-4 glass-warning px-4 py-2.5 text-xs text-amber-800 flex items-center justify-between flex-wrap gap-2">
           <span class="flex items-center gap-1.5">
-            <span class="text-sm">⏳</span>待付款項：訂金 <span class="num-display">NT$${fmtMoney(totalPendingDeposit)}</span> + 尾款 <span class="num-display">NT$${fmtMoney(totalPendingBalance)}</span>
+            <span class="text-sm">⏳</span>待付款項：訂金 <span class="num-display">NT$${fmtMoney(totalPendingDeposit)}</span> + 尾款 <span class="num-display">NT$${fmtMoney(totalPendingBalance)}</span>${totalPendingKol > 0 ? ` + KOL 分潤 <span class="num-display">NT$${fmtMoney(totalPendingKol)}</span>` : ''}
           </span>
           <span class="font-bold num-display text-amber-900">= NT$${fmtMoney(totalPending)}</span>
         </div>
@@ -518,8 +547,8 @@ async function renderPaymentList() {
   async function loadOrders() {
     const container = document.getElementById('order-list-content');
     try {
-      // 並行載入支出 + 收入
-      const [orders, incomes] = await Promise.all([
+      // 並行載入支出 + 收入 + KOL 分潤
+      const [orders, incomes, kolCommissions] = await Promise.all([
         api.purchaseOrders.list(),
         api.incomeRecords.list().catch(err => {
           // 收入表尚未 migrate 時不阻塞整頁，回空陣列
@@ -529,9 +558,17 @@ async function renderPaymentList() {
           }
           throw err;
         }),
+        api.kolCommissions.list().catch(err => {
+          if (isTableMissingError(err)) {
+            console.warn('kol_commissions 表尚未建立，請執行 migration_kol.sql');
+            return [];
+          }
+          throw err;
+        }),
       ]);
       allOrders  = orders;
       allIncomes = incomes;
+      allKolCommissions = kolCommissions;
       loadStats(allOrders, allIncomes);
       renderOrders();
     } catch (err) {
