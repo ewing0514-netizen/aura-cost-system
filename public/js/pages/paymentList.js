@@ -299,28 +299,42 @@ async function renderPaymentList() {
       `;
   }
 
-  // 月份列表 — 過去 12 個月連續顯示 + 任何資料超出範圍的月份
+  // 月份列表 — 從 2026/01 起到當月（或最新資料月份）連續顯示
   function extractAvailableMonths(orders, incomes) {
     const months = new Set();
     const now = new Date();
-    // 過去 12 個月 + 當月 = 13 個月連續
-    for (let i = 0; i <= 12; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      months.add(ym);
-    }
-    // 補上超出範圍的歷史資料
+
+    // 收集所有資料月份，順便算出最晚的月份
+    const dataMonths = [];
     for (const r of incomes) {
       if (r.cancelled) continue;
-      if (r.income_date) months.add(r.income_date.slice(0, 7));
-      if (r.received_at) months.add(r.received_at.slice(0, 7));
+      if (r.income_date) dataMonths.push(r.income_date.slice(0, 7));
+      if (r.received_at) dataMonths.push(r.received_at.slice(0, 7));
     }
     for (const o of orders) {
       if (o.cancelled) continue;
-      if (o.order_date)       months.add(o.order_date.slice(0, 7));
-      if (o.balance_paid_at)  months.add(o.balance_paid_at.slice(0, 7));
-      if (o.deposit_paid_at)  months.add(o.deposit_paid_at.slice(0, 7));
+      if (o.order_date)       dataMonths.push(o.order_date.slice(0, 7));
+      if (o.balance_paid_at)  dataMonths.push(o.balance_paid_at.slice(0, 7));
+      if (o.deposit_paid_at)  dataMonths.push(o.deposit_paid_at.slice(0, 7));
     }
+
+    // 起點：2026/01；終點：當月與資料中最晚月份取大
+    let cursor = new Date(2026, 0, 1);
+    let endY = now.getFullYear(), endM = now.getMonth();
+    for (const ym of dataMonths) {
+      const [y, m] = ym.split('-').map(Number);
+      if (y > endY || (y === endY && m - 1 > endM)) { endY = y; endM = m - 1; }
+    }
+    const end = new Date(endY, endM, 1);
+    while (cursor <= end) {
+      const ym = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+      months.add(ym);
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    }
+
+    // 保護：補上 2026/01 之前的歷史資料（避免遺失）
+    for (const ym of dataMonths) months.add(ym);
+
     return Array.from(months).sort().reverse(); // 新到舊
   }
 

@@ -69,17 +69,29 @@ async function renderKolList() {
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
   })();
 
-  // 萃取月份列表 — 過去 12 個月連續顯示 + 任何資料超出範圍的月份
+  // 萃取月份列表 — 從 2026/01 起到當月（或最新資料月份）連續顯示
   function extractKolMonths() {
     const months = new Set();
     const now = new Date();
-    // 過去 12 個月 + 當月 = 13 個月連續
-    for (let i = 0; i <= 12; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      months.add(ym);
+
+    // 起點：2026/01
+    let cursor = new Date(2026, 0, 1);
+    // 終點：當月（或更晚的資料月份）
+    let endY = now.getFullYear(), endM = now.getMonth();
+    for (const c of allCommissions) {
+      if (!c.start_date) continue;
+      const [y, m] = c.start_date.split('-').map(Number);
+      if (y > endY || (y === endY && m - 1 > endM)) { endY = y; endM = m - 1; }
     }
-    // 補上任何超出範圍的歷史資料（依開團開始日）
+    const end = new Date(endY, endM, 1);
+
+    while (cursor <= end) {
+      const ym = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+      months.add(ym);
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    }
+
+    // 保護：補上任何 2026/01 之前的歷史資料月份（依開團開始日）
     for (const c of allCommissions) {
       if (c.start_date) months.add(c.start_date.slice(0, 7));
     }
