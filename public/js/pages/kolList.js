@@ -20,6 +20,9 @@ async function renderKolList() {
           </div>
         </div>
 
+        <!-- 月份切換器 -->
+        <div id="kol-month-selector" class="mb-4"></div>
+
         <!-- 統計卡片 -->
         <div id="kol-stats" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div class="flex justify-center py-6 col-span-2 md:col-span-4"><div class="spinner"></div></div>
@@ -58,6 +61,61 @@ async function renderKolList() {
   let currentTab = 'all';
   let allKols = [];
   let allCommissions = [];
+
+  // 月份篩選 state — null = 預設用瀏覽器當月，'all' = 全部，其他 = 'YYYY-MM'
+  let selectedMonth = null;
+  const currentBrowserYM = (() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+  })();
+
+  // 萃取所有出現過的月份（YYYY-MM）
+  function extractKolMonths() {
+    const months = new Set();
+    for (const c of allCommissions) {
+      if (c.start_date)  months.add(c.start_date.slice(0, 7));
+      if (c.end_date)    months.add(c.end_date.slice(0, 7));
+      if (c.paid_at)     months.add(c.paid_at.slice(0, 7));
+    }
+    months.add(currentBrowserYM);
+    return Array.from(months).sort().reverse();
+  }
+
+  // 判斷一筆分潤是否在指定月份
+  function commissionInMonth(c, ym) {
+    if (!ym) return true; // 'all'
+    const match = (d) => d && d.slice(0, 7) === ym;
+    return match(c.start_date) || match(c.end_date) || match(c.paid_at);
+  }
+
+  function renderMonthSelector() {
+    const wrap = document.getElementById('kol-month-selector');
+    if (!wrap) return;
+    const months = extractKolMonths();
+    const activeKey = selectedMonth === 'all' ? 'all' : (selectedMonth || currentBrowserYM);
+
+    wrap.innerHTML = `
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs text-slate-500 font-semibold tracking-wide">📅 檢視期間：</span>
+        <div class="pill-tab-bar">
+          <button data-month="all" class="kol-month-pill pill-tab ${activeKey === 'all' ? 'active' : ''}">全部累計</button>
+          ${months.map(m => `
+            <button data-month="${m}" class="kol-month-pill pill-tab ${activeKey === m ? 'active' : ''}">
+              ${m.replace('-', '/')}${m === currentBrowserYM ? ' ⌃' : ''}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    wrap.querySelectorAll('.kol-month-pill').forEach(btn => {
+      btn.onclick = () => {
+        selectedMonth = btn.dataset.month;
+        renderStats();
+        renderCommissionTable();
+      };
+    });
+  }
 
   document.getElementById('btn-add-kol').onclick        = () => showKolModal(null, refresh);
   document.getElementById('btn-add-kol-2').onclick      = () => showKolModal(null, refresh);
@@ -118,6 +176,7 @@ async function renderKolList() {
       ]);
       allKols = kols;
       allCommissions = commissions;
+      renderMonthSelector();
       renderStats();
       renderCommissionTable();
       renderKolRoster();
@@ -134,48 +193,83 @@ async function renderKolList() {
 
   function renderStats() {
     const c = document.getElementById('kol-stats');
-    const totalUnpaid = allCommissions.filter(x => !x.paid).reduce((s, x) => s + parseFloat(x.commission_amount || 0), 0);
-    const totalPaid   = allCommissions.filter(x => x.paid).reduce((s, x) => s + parseFloat(x.commission_amount || 0), 0);
-    const totalSales  = allCommissions.reduce((s, x) => s + parseFloat(x.sales_amount || 0), 0);
-    const unpaidCount = allCommissions.filter(x => !x.paid).length;
+
+    const isAll = selectedMonth === 'all';
+    const filterYM = isAll ? null : (selectedMonth || currentBrowserYM);
+    const monthLabel = isAll ? '累計' : filterYM.replace('-', '/');
+    const periodTitle = isAll ? '累計' : '本月';
+
+    const filtered = allCommissions.filter(c => commissionInMonth(c, filterYM));
+    const totalUnpaid = filtered.filter(x => !x.paid).reduce((s, x) => s + parseFloat(x.commission_amount || 0), 0);
+    const totalPaid   = filtered.filter(x =>  x.paid).reduce((s, x) => s + parseFloat(x.commission_amount || 0), 0);
+    const totalSales  = filtered.reduce((s, x) => s + parseFloat(x.sales_amount || 0), 0);
+    const unpaidCount = filtered.filter(x => !x.paid).length;
+    const paidCount   = filtered.filter(x =>  x.paid).length;
+
+    // 累計參考（全部團購）
+    const cumUnpaid = allCommissions.filter(x => !x.paid).reduce((s, x) => s + parseFloat(x.commission_amount || 0), 0);
+    const cumPaid   = allCommissions.filter(x =>  x.paid).reduce((s, x) => s + parseFloat(x.commission_amount || 0), 0);
+    const cumSales  = allCommissions.reduce((s, x) => s + parseFloat(x.sales_amount || 0), 0);
+
+    // 該月活躍 KOL（有任何分潤紀錄落在該月的團主）
+    const activeKolIds = new Set(filtered.map(x => x.kol_id).filter(Boolean));
+    const activeKolCount = activeKolIds.size;
 
     c.innerHTML = `
       <div class="glass-stat glass-stat-expense">
-        <div class="flex items-center gap-1.5 text-pink-700 text-xs font-semibold tracking-wide mb-1.5">
-          <span class="text-base">⏳</span>待付分潤總額
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-1.5 text-pink-700 text-xs font-semibold tracking-wide">
+            <span class="text-base">⏳</span>${periodTitle}待付分潤
+          </div>
+          <span class="text-[10px] text-pink-600/60 font-mono">${monthLabel}</span>
         </div>
         <div class="num-display text-2xl text-pink-700">NT$${fmtMoneyKol(totalUnpaid)}</div>
-        <div class="text-[11px] text-pink-500/70 mt-1.5">${unpaidCount} 筆待付</div>
+        <div class="text-[11px] text-pink-500/70 mt-1.5">${unpaidCount} 筆${isAll ? '' : ` · 累計 <span class="font-semibold">NT$${fmtMoneyKol(cumUnpaid)}</span>`}</div>
       </div>
       <div class="glass-stat glass-stat-income">
-        <div class="flex items-center gap-1.5 text-emerald-700 text-xs font-semibold tracking-wide mb-1.5">
-          <span class="text-base">✓</span>已付分潤總額
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-1.5 text-emerald-700 text-xs font-semibold tracking-wide">
+            <span class="text-base">✓</span>${periodTitle}已付分潤
+          </div>
+          <span class="text-[10px] text-emerald-600/60 font-mono">${monthLabel}</span>
         </div>
         <div class="num-display text-2xl text-emerald-700">NT$${fmtMoneyKol(totalPaid)}</div>
-        <div class="text-[11px] text-emerald-500/70 mt-1.5">${allCommissions.length - unpaidCount} 筆已付</div>
+        <div class="text-[11px] text-emerald-500/70 mt-1.5">${paidCount} 筆${isAll ? '' : ` · 累計 <span class="font-semibold">NT$${fmtMoneyKol(cumPaid)}</span>`}</div>
       </div>
       <div class="glass-stat glass-stat-net">
-        <div class="flex items-center gap-1.5 text-indigo-700 text-xs font-semibold tracking-wide mb-1.5">
-          <span class="text-base">📦</span>累計銷售金額
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-1.5 text-indigo-700 text-xs font-semibold tracking-wide">
+            <span class="text-base">📦</span>${periodTitle}銷售金額
+          </div>
+          <span class="text-[10px] text-indigo-600/60 font-mono">${monthLabel}</span>
         </div>
         <div class="num-display text-2xl text-indigo-700">NT$${fmtMoneyKol(totalSales)}</div>
-        <div class="text-[11px] text-indigo-500/70 mt-1.5">所有團購加總</div>
+        <div class="text-[11px] text-indigo-500/70 mt-1.5">${filtered.length} 場團購${isAll ? '' : ` · 累計 <span class="font-semibold">NT$${fmtMoneyKol(cumSales)}</span>`}</div>
       </div>
       <div class="glass-stat glass-stat-partner">
-        <div class="flex items-center gap-1.5 text-purple-700 text-xs font-semibold tracking-wide mb-1.5">
-          <span class="text-base">👥</span>合作團主
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-1.5 text-purple-700 text-xs font-semibold tracking-wide">
+            <span class="text-base">👥</span>${isAll ? '合作' : '本月活躍'}團主
+          </div>
+          <span class="text-[10px] text-purple-600/60 font-mono">${monthLabel}</span>
         </div>
-        <div class="num-display text-2xl text-purple-700">${allKols.filter(k => k.is_active).length} <span class="text-base font-normal text-purple-500">位</span></div>
-        <div class="text-[11px] text-purple-500/70 mt-1.5">${allCommissions.length} 場團購</div>
+        <div class="num-display text-2xl text-purple-700">${isAll ? allKols.filter(k => k.is_active).length : activeKolCount} <span class="text-base font-normal text-purple-500">位</span></div>
+        <div class="text-[11px] text-purple-500/70 mt-1.5">${isAll ? `${allCommissions.length} 場團購` : `名單上共 ${allKols.filter(k => k.is_active).length} 位 KOL`}</div>
       </div>
     `;
   }
 
   function renderCommissionTable() {
     const wrap = document.getElementById('commission-list');
-    let rows = allCommissions;
-    if (currentTab === 'unpaid')    rows = allCommissions.filter(c => !c.paid);
-    else if (currentTab === 'paid') rows = allCommissions.filter(c =>  c.paid);
+
+    // 先依月份篩選
+    const isAll = selectedMonth === 'all';
+    const filterYM = isAll ? null : (selectedMonth || currentBrowserYM);
+    let rows = allCommissions.filter(c => commissionInMonth(c, filterYM));
+
+    // 再依狀態 tab 篩選
+    if (currentTab === 'unpaid')    rows = rows.filter(c => !c.paid);
+    else if (currentTab === 'paid') rows = rows.filter(c =>  c.paid);
 
     if (rows.length === 0) {
       wrap.innerHTML = `
