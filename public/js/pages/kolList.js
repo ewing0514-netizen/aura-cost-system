@@ -69,23 +69,20 @@ async function renderKolList() {
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
   })();
 
-  // 萃取所有出現過的月份（YYYY-MM）
+  // 萃取所有出現過的月份（YYYY-MM）— 僅以「開團開始日」為基準
   function extractKolMonths() {
     const months = new Set();
     for (const c of allCommissions) {
-      if (c.start_date)  months.add(c.start_date.slice(0, 7));
-      if (c.end_date)    months.add(c.end_date.slice(0, 7));
-      if (c.paid_at)     months.add(c.paid_at.slice(0, 7));
+      if (c.start_date) months.add(c.start_date.slice(0, 7));
     }
     months.add(currentBrowserYM);
     return Array.from(months).sort().reverse();
   }
 
-  // 判斷一筆分潤是否在指定月份
+  // 判斷一筆分潤是否在指定月份 — 僅看「開團開始日」
   function commissionInMonth(c, ym) {
     if (!ym) return true; // 'all'
-    const match = (d) => d && d.slice(0, 7) === ym;
-    return match(c.start_date) || match(c.end_date) || match(c.paid_at);
+    return c.start_date && c.start_date.slice(0, 7) === ym;
   }
 
   function renderMonthSelector() {
@@ -105,6 +102,7 @@ async function renderKolList() {
             </button>
           `).join('')}
         </div>
+        <span class="text-[11px] text-slate-400 ml-1">＊以開團開始日為基準</span>
       </div>
     `;
 
