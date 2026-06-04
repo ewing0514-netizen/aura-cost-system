@@ -111,6 +111,7 @@ async function renderKolList() {
     wrap.querySelectorAll('.kol-month-pill').forEach(btn => {
       btn.onclick = () => {
         selectedMonth = btn.dataset.month;
+        renderMonthSelector();    // 重畫 pill 讓 active 狀態同步
         renderStats();
         renderCommissionTable();
       };
