@@ -157,6 +157,15 @@ const api = {
     update: (id, b)   => request('PUT',    `/kols/commissions/${id}`, b),
     delete: (id)      => request('DELETE', `/kols/commissions/${id}`),
   },
+
+  // 庫存
+  inventory: {
+    summary: ()       => request('GET',    '/inventory/summary'),
+    list:    ()       => request('GET',    '/inventory/movements'),
+    create:  (body)   => request('POST',   '/inventory/movements', body),
+    update:  (id, b)  => request('PUT',    `/inventory/movements/${id}`, b),
+    delete:  (id)     => request('DELETE', `/inventory/movements/${id}`),
+  },
 };
 
 window.api = api;

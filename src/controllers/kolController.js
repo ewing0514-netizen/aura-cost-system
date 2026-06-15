@@ -1,5 +1,33 @@
-const supabase = require('../config/database');
-const Joi = require('joi');
+const supabase  = require('../config/database');
+const Joi       = require('joi');
+const inventory = require('./inventoryController');
+
+// 偵測 kol_commissions 是否已有 units_sold 欄位
+let _hasUnits = null;
+async function hasUnitsColumn() {
+  if (_hasUnits !== null) return _hasUnits;
+  const { error } = await supabase.from('kol_commissions').select('units_sold').limit(1);
+  _hasUnits = !error;
+  return _hasUnits;
+}
+
+// 依 KOL 開團的 units_sold 同步出貨庫存異動（依開團開始日）
+async function syncStockFromCommission(c) {
+  const units = parseInt(c.units_sold) || 0;
+  // 無產品連結或件數為 0 → 移除舊異動
+  if (!c.product_id || units <= 0) {
+    await inventory.removeRefMovements('kol_commission', c.id);
+    return;
+  }
+  await inventory.syncRefMovements('kol_commission', c.id, [{
+    product_id:    c.product_id,
+    type:          'out',
+    channel:       'kol',
+    quantity:      -Math.abs(units),  // 出貨為負
+    movement_date: c.start_date,
+    note:          `KOL 開團出貨：${c.campaign_name || ''}`.trim(),
+  }]);
+}
 
 // ===== KOL（團主）管理 =====
 const kolSchema = Joi.object({
@@ -79,6 +107,7 @@ const commissionSchema = Joi.object({
   commission_pct: Joi.number().min(0).max(100).default(20),
   paid:           Joi.boolean().default(false),
   paid_at:        Joi.string().isoDate().allow('', null).optional(),
+  units_sold:     Joi.number().integer().min(0).default(0),
   note:           Joi.string().trim().allow('', null).optional(),
 });
 
@@ -124,7 +153,7 @@ async function createCommission(req, res, next) {
   try {
     const { error: valErr, value } = commissionSchema.validate(req.body);
     if (valErr) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: valErr.message } });
-    const { data, error } = await supabase.from('kol_commissions').insert({
+    const insertPayload = {
       kol_id:         value.kol_id || null,
       campaign_name:  value.campaign_name,
       product_id:     value.product_id || null,
@@ -136,8 +165,16 @@ async function createCommission(req, res, next) {
       paid:           value.paid,
       paid_at:        value.paid_at || null,
       note:           value.note || null,
-    }).select('*, kols(name, bank_account), products(name)').single();
+    };
+    if (await hasUnitsColumn()) insertPayload.units_sold = value.units_sold || 0;
+
+    const { data, error } = await supabase.from('kol_commissions')
+      .insert(insertPayload).select('*, kols(name, bank_account), products(name)').single();
     if (error) throw error;
+
+    // 同步出貨庫存異動
+    try { await syncStockFromCommission(data); } catch (e) { console.warn('庫存同步失敗:', e.message); }
+
     res.status(201).json({ success: true, data: decorateCommission(data) });
   } catch (err) { next(err); }
 }
@@ -147,7 +184,7 @@ async function updateCommission(req, res, next) {
     const { id } = req.params;
     const { error: valErr, value } = commissionSchema.validate(req.body);
     if (valErr) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: valErr.message } });
-    const { data, error } = await supabase.from('kol_commissions').update({
+    const updatePayload = {
       kol_id:         value.kol_id || null,
       campaign_name:  value.campaign_name,
       product_id:     value.product_id || null,
@@ -159,8 +196,16 @@ async function updateCommission(req, res, next) {
       paid:           value.paid,
       paid_at:        value.paid_at || null,
       note:           value.note || null,
-    }).eq('id', id).select('*, kols(name, bank_account), products(name)').single();
+    };
+    if (await hasUnitsColumn()) updatePayload.units_sold = value.units_sold || 0;
+
+    const { data, error } = await supabase.from('kol_commissions')
+      .update(updatePayload).eq('id', id).select('*, kols(name, bank_account), products(name)').single();
     if (error || !data) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到指定分潤紀錄' } });
+
+    // 重新同步出貨庫存異動
+    try { await syncStockFromCommission(data); } catch (e) { console.warn('庫存同步失敗:', e.message); }
+
     res.json({ success: true, data: decorateCommission(data) });
   } catch (err) { next(err); }
 }
@@ -168,6 +213,7 @@ async function updateCommission(req, res, next) {
 async function removeCommission(req, res, next) {
   try {
     const { id } = req.params;
+    try { await inventory.removeRefMovements('kol_commission', id); } catch (e) { /* 靜默 */ }
     const { error } = await supabase.from('kol_commissions').delete().eq('id', id);
     if (error) throw error;
     res.json({ success: true });

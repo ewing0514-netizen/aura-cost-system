@@ -15,6 +15,9 @@ function handleRoute() {
   } else if (hash === '#/kols') {
     renderKolList();
     updateNav('kols');
+  } else if (hash === '#/inventory') {
+    renderInventoryList();
+    updateNav('inventory');
   } else {
     const m = hash.match(/^#\/product\/([a-f0-9-]+)$/);
     if (m) {

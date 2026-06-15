@@ -1,10 +1,11 @@
 const router = require('express').Router();
 const costItems = require('../controllers/costItemController');
 
-router.use('/products', require('./products'));
-router.use('/analysis', require('./analysis'));
-router.use('/payments', require('./payments'));
-router.use('/kols',     require('./kol'));
+router.use('/products',  require('./products'));
+router.use('/analysis',  require('./analysis'));
+router.use('/payments',  require('./payments'));
+router.use('/kols',      require('./kol'));
+router.use('/inventory', require('./inventory'));
 
 // 全域成本（Dashboard 管理的公司層級成本）
 router.get('/costs',              costItems.listGlobal);

@@ -1,5 +1,6 @@
-const supabase = require('../config/database');
-const Joi = require('joi');
+const supabase  = require('../config/database');
+const Joi       = require('joi');
+const inventory = require('./inventoryController');
 
 const schema = Joi.object({
   supplier_id:        Joi.string().uuid().required(),
@@ -24,6 +25,16 @@ const schema = Joi.object({
   ).default([]),
   operating_fee_pct:  Joi.number().min(0).max(100).default(15),
   public_fund_amount: Joi.number().min(0).default(0),
+
+  // ── 庫存入庫欄位 ─────────────────────────────────────
+  stock_items:        Joi.array().items(
+    Joi.object({
+      product_id:   Joi.string().uuid().required(),
+      product_name: Joi.string().allow('', null).optional(),
+      quantity:     Joi.number().integer().min(0).required(),
+    })
+  ).default([]),
+  stocked_in:         Joi.boolean().default(false),
 });
 
 // 衍生狀態
@@ -41,6 +52,42 @@ async function hasExtrasColumns() {
   const { error } = await supabase.from('purchase_orders').select('extra_expenses').limit(1);
   _hasExtrasColumns = !error;
   return _hasExtrasColumns;
+}
+
+// 偵測 DB 是否已跑過 inventory migration（stock_items 欄位）
+let _hasStockColumns = null;
+async function hasStockColumns() {
+  if (_hasStockColumns !== null) return _hasStockColumns;
+  const { error } = await supabase.from('purchase_orders').select('stock_items').limit(1);
+  _hasStockColumns = !error;
+  return _hasStockColumns;
+}
+
+// 依採購單的 stock_items + stocked_in 同步進貨庫存異動
+async function syncStockFromOrder(order) {
+  // 未入庫 → 移除此採購單產生的所有進貨異動
+  if (!order.stocked_in) {
+    await inventory.removeRefMovements('purchase_order', order.id);
+    return;
+  }
+  const items = Array.isArray(order.stock_items) ? order.stock_items : [];
+  const totalUnits = items.reduce((s, it) => s + (parseInt(it.quantity) || 0), 0);
+  const total      = parseFloat(order.total_amount || 0);
+  const unitCost   = totalUnits > 0 ? total / totalUnits : null; // 平均單位成本（選填）
+
+  const movements = items
+    .filter(it => it.product_id && (parseInt(it.quantity) || 0) > 0)
+    .map(it => ({
+      product_id:    it.product_id,
+      type:          'in',
+      channel:       'restock',
+      quantity:      Math.abs(parseInt(it.quantity)),  // 進貨為正
+      unit_cost:     unitCost,
+      movement_date: order.order_date,
+      note:          `採購入庫：${order.item_description || ''}`.trim(),
+    }));
+
+  await inventory.syncRefMovements('purchase_order', order.id, movements);
 }
 
 // ── 衍生計算欄位 ──────────────────────────────────────
@@ -143,6 +190,10 @@ async function create(req, res, next) {
       payload.operating_fee_pct  = value.operating_fee_pct ?? 15;
       payload.public_fund_amount = value.public_fund_amount || 0;
     }
+    if (await hasStockColumns()) {
+      payload.stock_items = value.stock_items || [];
+      payload.stocked_in  = value.stocked_in || false;
+    }
 
     const { data, error } = await supabase
       .from('purchase_orders')
@@ -150,6 +201,12 @@ async function create(req, res, next) {
       .select()
       .single();
     if (error) throw error;
+
+    // 同步進貨庫存異動
+    if (await hasStockColumns()) {
+      try { await syncStockFromOrder(data); } catch (e) { console.warn('庫存同步失敗:', e.message); }
+    }
+
     res.status(201).json({ success: true, data: { ...data, ...computeCostBreakdown(data), status: deriveStatus(data) } });
   } catch (err) { next(err); }
 }
@@ -183,6 +240,10 @@ async function update(req, res, next) {
       payload.operating_fee_pct  = value.operating_fee_pct ?? 15;
       payload.public_fund_amount = value.public_fund_amount || 0;
     }
+    if (await hasStockColumns()) {
+      payload.stock_items = value.stock_items || [];
+      payload.stocked_in  = value.stocked_in || false;
+    }
 
     const { data, error } = await supabase
       .from('purchase_orders')
@@ -191,6 +252,12 @@ async function update(req, res, next) {
       .select()
       .single();
     if (error || !data) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到指定貨款記錄' } });
+
+    // 重新同步進貨庫存異動
+    if (await hasStockColumns()) {
+      try { await syncStockFromOrder(data); } catch (e) { console.warn('庫存同步失敗:', e.message); }
+    }
+
     res.json({ success: true, data: { ...data, ...computeCostBreakdown(data), status: deriveStatus(data) } });
   } catch (err) { next(err); }
 }
@@ -198,6 +265,8 @@ async function update(req, res, next) {
 async function remove(req, res, next) {
   try {
     const { id } = req.params;
+    // 先移除此採購單產生的庫存異動
+    try { await inventory.removeRefMovements('purchase_order', id); } catch (e) { /* 靜默 */ }
     const { error } = await supabase.from('purchase_orders').delete().eq('id', id);
     if (error) throw error;
     res.json({ success: true });

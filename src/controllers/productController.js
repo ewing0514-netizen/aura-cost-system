@@ -1,6 +1,7 @@
-const supabase = require('../config/database');
-const Joi      = require('joi');
-const cache    = require('../utils/cache');
+const supabase  = require('../config/database');
+const Joi       = require('joi');
+const cache     = require('../utils/cache');
+const inventory = require('./inventoryController');
 
 const LIST_CACHE_KEY     = 'products:list';
 const LIST_TTL_MS        = 5 * 60_000; // 5 分鐘（寫入操作會主動清除，不必擔心過期）
@@ -8,56 +9,63 @@ const PRODUCT_CACHE_PFX  = 'products:item:';
 const PRODUCT_TTL_MS     = 5 * 60_000; // 5 分鐘
 
 const schema = Joi.object({
-  name:        Joi.string().trim().min(1).max(255).required(),
-  description: Joi.string().trim().allow('', null).optional(),
-  cover_image: Joi.string().allow('', null).optional(),
-  sku:         Joi.string().trim().max(100).allow('', null).optional(),
+  name:         Joi.string().trim().min(1).max(255).required(),
+  description:  Joi.string().trim().allow('', null).optional(),
+  cover_image:  Joi.string().allow('', null).optional(),
+  sku:          Joi.string().trim().max(100).allow('', null).optional(),
+  safety_stock: Joi.number().integer().min(0).optional(),
 });
 
 async function list(req, res, next) {
   try {
-    // 快取命中：直接回傳，跳過 DB
-    const cached = cache.get(LIST_CACHE_KEY);
-    if (cached) {
-      res.setHeader('X-Cache', 'HIT');
-      return res.json({ success: true, data: cached });
+    // 取得基礎產品列表（快取命中跳過 DB，但庫存永遠即時計算）
+    let base = cache.get(LIST_CACHE_KEY);
+    let cacheHit = !!base;
+
+    if (!base) {
+      // 注意：不選 cover_image（大型 TOAST 欄位），避免 DB 讀取延遲
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          id, name, description, is_active, created_at, safety_stock,
+          cost_items(amount),
+          price_tiers(id, is_active, price_type, amount)
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      base = data.map(p => {
+        const totalCost = p.cost_items.reduce((sum, c) => sum + parseFloat(c.amount), 0);
+        const activePriceTiers = p.price_tiers.filter(pt => pt.is_active);
+        const normalTier = activePriceTiers.find(pt => pt.price_type === 'normal');
+        return {
+          id:           p.id,
+          name:         p.name,
+          description:  p.description,
+          created_at:   p.created_at,
+          total_cost:   totalCost,
+          price_count:  activePriceTiers.length,
+          normal_price: normalTier ? parseFloat(normalTier.amount) : null,
+          safety_stock: parseInt(p.safety_stock) || 0,
+        };
+      });
+      cache.set(LIST_CACHE_KEY, base, LIST_TTL_MS);
     }
 
-    // 注意：不選 cover_image（大型 TOAST 欄位），避免 DB 讀取延遲
-    // 圖片改由前端在卡片渲染後以個別 GET /products/:id 延遲載入
-    const { data, error } = await supabase
-      .from('products')
-      .select(`
-        id, name, description, is_active, created_at,
-        cost_items(amount),
-        price_tiers(id, is_active, price_type, amount)
-      `)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    const products = data.map(p => {
-      const totalCost = p.cost_items.reduce((sum, c) => sum + parseFloat(c.amount), 0);
-      const activePriceTiers = p.price_tiers.filter(pt => pt.is_active);
-      const activePriceCount = activePriceTiers.length;
-      // 取第一個啟用的常態價（price_type = 'normal'）
-      const normalTier = activePriceTiers.find(pt => pt.price_type === 'normal');
-      const normalPrice = normalTier ? parseFloat(normalTier.amount) : null;
-      return {
-        id:           p.id,
-        name:         p.name,
-        description:  p.description,
-        // cover_image 不在此回傳（前端用 GET /products/:id 延遲載入）
-        created_at:   p.created_at,
-        total_cost:   totalCost,
-        price_count:  activePriceCount,
-        normal_price: normalPrice,
-      };
+    // 庫存即時疊加（不快取，因為進貨/出貨會隨時變動）
+    const stockMap = await inventory.computeStockMap();
+    const products = base.map(p => {
+      const current = stockMap[p.id] || 0;
+      const safety  = p.safety_stock || 0;
+      let stockStatus = 'ok';
+      if (current <= 0)           stockStatus = 'out';
+      else if (current <= safety) stockStatus = 'low';
+      return { ...p, current_stock: current, stock_status: stockStatus };
     });
 
-    cache.set(LIST_CACHE_KEY, products, LIST_TTL_MS);
-    res.setHeader('X-Cache', 'MISS');
+    res.setHeader('X-Cache', cacheHit ? 'HIT' : 'MISS');
     res.json({ success: true, data: products });
   } catch (err) {
     next(err);
@@ -75,7 +83,7 @@ async function get(req, res, next) {
 
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, description, cover_image, sku, is_active, created_at, updated_at')
+      .select('id, name, description, cover_image, sku, safety_stock, is_active, created_at, updated_at')
       .eq('id', id)
       .single();
 
@@ -99,10 +107,11 @@ async function create(req, res, next) {
     const { data, error } = await supabase
       .from('products')
       .insert({
-        name:        value.name,
-        description: value.description || null,
-        cover_image: value.cover_image || null,
-        sku:         value.sku || null,
+        name:         value.name,
+        description:  value.description || null,
+        cover_image:  value.cover_image || null,
+        sku:          value.sku || null,
+        safety_stock: value.safety_stock ?? 0,
       })
       .select()
       .single();
@@ -132,6 +141,10 @@ async function update(req, res, next) {
     // sku：明確傳入才更新（允許傳 null 來清除）
     if ('sku' in req.body) {
       payload.sku = value.sku || null;
+    }
+    // safety_stock：明確傳入才更新
+    if ('safety_stock' in req.body) {
+      payload.safety_stock = value.safety_stock ?? 0;
     }
 
     const { data, error } = await supabase
@@ -174,7 +187,7 @@ async function duplicate(req, res, next) {
     // 取得原始產品
     const { data: original, error: pErr } = await supabase
       .from('products')
-      .select('name, description, cover_image, sku')
+      .select('name, description, cover_image, sku, safety_stock')
       .eq('id', id)
       .single();
 
@@ -186,10 +199,11 @@ async function duplicate(req, res, next) {
     const { data: newProduct, error: cErr } = await supabase
       .from('products')
       .insert({
-        name:        original.name + '（複製）',
-        description: original.description || null,
-        cover_image: original.cover_image || null,
-        sku:         original.sku ? original.sku + '-COPY' : null,
+        name:         original.name + '（複製）',
+        description:  original.description || null,
+        cover_image:  original.cover_image || null,
+        sku:          original.sku ? original.sku + '-COPY' : null,
+        safety_stock: original.safety_stock ?? 0,
       })
       .select()
       .single();

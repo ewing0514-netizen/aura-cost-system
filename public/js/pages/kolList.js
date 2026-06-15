@@ -594,6 +594,16 @@ async function showCommissionModal(commission, kols, onSave) {
             <span class="text-sm text-pink-700 font-medium">💰 應付分潤金額</span>
             <span class="text-lg font-bold text-pink-700 font-mono" id="c-amount-preview">NT$0</span>
           </div>
+          <!-- 出貨件數（庫存）-->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">出貨件數 <span class="text-gray-400 text-xs font-normal">（選填，自動扣庫存）</span></label>
+            <div class="flex items-center gap-2">
+              <input id="c-units" type="number" min="0" step="1" value="${commission?.units_sold || 0}"
+                class="w-28 border border-gray-300 rounded-lg px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-pink-500">
+              <span class="text-sm text-gray-500">件，會從「關聯產品」的庫存扣除</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">需有設定上方「關聯產品」才會扣庫存</p>
+          </div>
           <!-- 已付狀態 -->
           <div class="grid grid-cols-2 gap-3">
             <label class="flex items-center gap-2 cursor-pointer">
@@ -674,6 +684,7 @@ async function showCommissionModal(commission, kols, onSave) {
       commission_pct: parseFloat(document.getElementById('c-pct').value) || 0,
       paid,
       paid_at:        paid ? (document.getElementById('c-paid-date').value || new Date().toISOString().slice(0,10)) : null,
+      units_sold:     parseInt(document.getElementById('c-units').value) || 0,
       note:           document.getElementById('c-note').value.trim() || null,
     };
 

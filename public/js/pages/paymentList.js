@@ -756,6 +756,29 @@ async function showPurchaseOrderModal(order, onSave) {
             <div class="text-xl font-bold text-indigo-700" id="f-actual-cost">NT$0</div>
             <div class="text-[10px] text-gray-500 mt-1" id="f-actual-cost-formula">總金額 + 其他支出 + 運營費 + 公基金</div>
           </div>
+
+          <!-- 🆕 入庫件數（庫存）-->
+          <div class="border border-gray-200 rounded-lg p-3 bg-blue-50/30">
+            <label class="flex items-center gap-2 cursor-pointer mb-2">
+              <input id="f-stocked-in" type="checkbox" class="w-4 h-4 text-blue-600 rounded" ${order?.stocked_in ? 'checked' : ''}>
+              <span class="text-sm font-medium text-blue-800">📦 這批貨已入庫（自動增加庫存）</span>
+            </label>
+            <div id="f-stock-rows" class="space-y-1.5 ${order?.stocked_in ? '' : 'hidden'}">
+              ${products.map(p => {
+                const existing = (Array.isArray(order?.stock_items) ? order.stock_items : []).find(s => s.product_id === p.id);
+                return `
+                  <div class="flex items-center gap-2">
+                    <span class="flex-1 text-sm text-gray-700 truncate">${escHtml(p.name)}</span>
+                    <input type="number" min="0" step="1" data-pid="${p.id}" data-pname="${escHtml(p.name)}"
+                      value="${existing ? existing.quantity : ''}"
+                      class="f-stock-qty w-24 text-right border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0">
+                    <span class="text-xs text-gray-400">件</span>
+                  </div>`;
+              }).join('')}
+            </div>
+            <p class="text-[10px] text-gray-400 mt-1.5">勾選後填入這批採購各產品的入庫件數，庫存頁會自動增加</p>
+          </div>
           <!-- 訂金已付 -->
           <div class="border border-gray-200 rounded-lg p-3 space-y-2">
             <label class="flex items-center gap-2 cursor-pointer">
@@ -918,6 +941,11 @@ async function showPurchaseOrderModal(order, onSave) {
     document.getElementById('f-balance-date-wrap').classList.toggle('hidden', !this.checked);
   };
 
+  // 入庫 toggle → 顯示/隱藏件數輸入
+  document.getElementById('f-stocked-in').onchange = function() {
+    document.getElementById('f-stock-rows').classList.toggle('hidden', !this.checked);
+  };
+
   // 表單提交
   document.getElementById('order-form').onsubmit = async e => {
     e.preventDefault();
@@ -953,6 +981,15 @@ async function showPurchaseOrderModal(order, onSave) {
       operating_fee_pct:  parseFloat(document.getElementById('f-ops-pct').value) || 0,
       public_fund_amount: parseFloat(document.getElementById('f-fund').value)    || 0,
     };
+
+    // 入庫件數
+    const stockedIn = document.getElementById('f-stocked-in').checked;
+    body.stocked_in = stockedIn;
+    body.stock_items = stockedIn
+      ? Array.from(document.querySelectorAll('.f-stock-qty'))
+          .map(inp => ({ product_id: inp.dataset.pid, product_name: inp.dataset.pname, quantity: parseInt(inp.value) || 0 }))
+          .filter(s => s.quantity > 0)
+      : [];
 
     try {
       if (isEdit) {

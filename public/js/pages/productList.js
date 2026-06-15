@@ -540,6 +540,18 @@ function showGlobalCostModal(cost, defaultGroupKey, onSave) {
 // 產品卡片
 // =====================================================
 
+// 庫存徽章（依 stock_status 上色）
+function renderStockBadge(p) {
+  if (p.current_stock == null) return '';
+  const map = {
+    out: { cls: 'status-pending',      label: '🔴 缺貨' },
+    low: { cls: 'status-deposit-paid', label: '🟡 偏低' },
+    ok:  { cls: 'status-completed',    label: '✅' },
+  };
+  const st = map[p.stock_status] || map.ok;
+  return `<span class="status-chip ${st.cls} flex-shrink-0" title="目前庫存 ${p.current_stock} 件">${st.label} ${p.current_stock}</span>`;
+}
+
 function renderProductCard(p) {
   const cost = p.total_cost || 0;
 
@@ -561,7 +573,10 @@ function renderProductCard(p) {
         </button>
       </div>
       <div class="p-5">
-        <h3 class="font-semibold text-slate-900 mb-1" style="letter-spacing:-0.015em">${escapeHtml(p.name)}</h3>
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <h3 class="font-semibold text-slate-900" style="letter-spacing:-0.015em">${escapeHtml(p.name)}</h3>
+          ${renderStockBadge(p)}
+        </div>
         ${p.description ? `<p class="text-slate-400 text-xs mb-3 line-clamp-2 leading-relaxed">${escapeHtml(p.description)}</p>` : '<div class="mb-3"></div>'}
         <div class="flex gap-4 text-sm">
           <div>
@@ -641,6 +656,14 @@ function showProductModal(product, onSave) {
         </div>
         <p class="text-xs text-gray-400 mt-1">用於庫存管理的唯一識別碼，可自行輸入或自動生成</p>
       </div>
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-1">安全庫存門檻 <span class="text-gray-400 text-xs font-normal">（選填）</span></label>
+        <div class="flex items-center gap-2">
+          <input type="number" id="p-safety" min="0" step="1" value="${isEdit ? (product.safety_stock ?? 0) : 0}"
+            class="w-28 border border-gray-300 rounded-lg px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <span class="text-sm text-gray-500">件，低於此數量即在庫存頁警示補貨</span>
+        </div>
+      </div>
       <div class="flex justify-end gap-2">
         <button type="button" id="modal-cancel" class="px-4 py-2 rounded-lg border text-gray-700 hover:bg-gray-50 text-sm">取消</button>
         <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm font-medium">
@@ -715,8 +738,9 @@ function showProductModal(product, onSave) {
     e.preventDefault();
     const body = {
       name:        document.getElementById('p-name').value.trim(),
-      description: document.getElementById('p-desc').value.trim(),
-      sku:         document.getElementById('p-sku').value.trim() || null,
+      description:  document.getElementById('p-desc').value.trim(),
+      sku:          document.getElementById('p-sku').value.trim() || null,
+      safety_stock: parseInt(document.getElementById('p-safety').value) || 0,
     };
     // 編輯模式：只有在使用者明確更改圖片時才帶 cover_image（避免每次編輯都重傳大型 base64）
     // 新增模式：永遠帶（可能是 null 或有值）
