@@ -913,7 +913,10 @@ function showExpenseModal(expense, category, onSave) {
       if (onSave) onSave();
       toast(isEdit ? '支出已更新' : '支出已新增');
     } catch (err) {
-      errEl.textContent = err.message; errEl.classList.remove('hidden');
+      const friendly = /expense_records/.test(err.message)
+        ? '系統/其他支出的資料表尚未建立，請先在 Supabase 執行 migration_expense_records.sql（建立 expense_records 表）後再試。'
+        : err.message;
+      errEl.textContent = friendly; errEl.classList.remove('hidden');
       btn.disabled = false; btn.textContent = '儲存';
     }
   };
