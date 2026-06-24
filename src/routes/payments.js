@@ -2,6 +2,7 @@ const router = require('express').Router();
 const suppliers = require('../controllers/supplierController');
 const orders    = require('../controllers/purchaseOrderController');
 const incomes   = require('../controllers/incomeRecordController');
+const expenses  = require('../controllers/expenseRecordController');
 
 // 供應商
 router.get('/suppliers',                                         suppliers.list);
@@ -24,5 +25,11 @@ router.get('/income-records/:id',    incomes.get);
 router.post('/income-records',       incomes.create);
 router.put('/income-records/:id',    incomes.update);
 router.delete('/income-records/:id', incomes.remove);
+
+// 系統 / 其他支出記錄
+router.get('/expense-records',        expenses.list);
+router.post('/expense-records',       expenses.create);
+router.put('/expense-records/:id',    expenses.update);
+router.delete('/expense-records/:id', expenses.remove);
 
 module.exports = router;

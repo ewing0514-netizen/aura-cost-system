@@ -141,6 +141,14 @@ const api = {
     delete: (id)      => request('DELETE', `/payments/income-records/${id}`),
   },
 
+  // 系統 / 其他支出記錄
+  expenseRecords: {
+    list:   ()        => request('GET',    '/payments/expense-records'),
+    create: (body)    => request('POST',   '/payments/expense-records', body),
+    update: (id, b)   => request('PUT',    `/payments/expense-records/${id}`, b),
+    delete: (id)      => request('DELETE', `/payments/expense-records/${id}`),
+  },
+
   // KOL 團主
   kols: {
     list:   ()        => request('GET',    '/kols'),

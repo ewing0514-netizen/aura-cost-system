@@ -91,6 +91,7 @@ async function renderPaymentList() {
   let allOrders   = [];
   let allIncomes  = [];
   let allKolCommissions = [];
+  let allExpenseRecords = [];
   let allSuppliers = [];
 
   // 月份篩選 state — null = 預設用瀏覽器當月，'all' = 累計，其他 = 'YYYY-MM'
@@ -100,7 +101,7 @@ async function renderPaymentList() {
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
   })();
 
-  document.getElementById('btn-add-order').onclick    = () => showPurchaseOrderModal(null, refresh);
+  document.getElementById('btn-add-order').onclick    = () => showExpenseTypeChooser(refresh);
   document.getElementById('btn-add-income').onclick   = () => showIncomeModal(null, refresh);
   document.getElementById('btn-add-supplier').onclick = () => showSupplierModal(null, loadSuppliers);
 
@@ -130,16 +131,22 @@ async function renderPaymentList() {
       if (inc) showIncomeModal(inc, refresh);
     } else if (action === 'delete-income') {
       deleteIncomeRecord(id, name, refresh);
+    } else if (action === 'edit-expense') {
+      const exp = allExpenseRecords.find(x => x.id === id);
+      if (exp) showExpenseModal(exp, exp.category, refresh);
+    } else if (action === 'delete-expense') {
+      deleteExpenseRecord(id, name, refresh);
     }
   });
 
   function renderOrders() {
     const container = document.getElementById('order-list-content');
 
-    // 合併收入 + 支出，加上 _kind 區分
+    // 合併收入 + 貨款支出 + 系統/其他支出，加上 _kind 區分
     const merged = [
-      ...allOrders.map(o  => ({ ...o, _kind: 'expense', _date: o.order_date,  _ts: o.order_date  + (o.created_at || '') })),
-      ...allIncomes.map(i => ({ ...i, _kind: 'income',  _date: i.income_date, _ts: i.income_date + (i.created_at || '') })),
+      ...allOrders.map(o  => ({ ...o, _kind: 'expense',  _date: o.order_date,   _ts: o.order_date   + (o.created_at || '') })),
+      ...allIncomes.map(i => ({ ...i, _kind: 'income',   _date: i.income_date,  _ts: i.income_date  + (i.created_at || '') })),
+      ...allExpenseRecords.map(x => ({ ...x, _kind: 'exprec', _date: x.expense_date, _ts: x.expense_date + (x.created_at || '') })),
     ];
 
     // 按目前 tab 過濾
@@ -149,12 +156,12 @@ async function renderPaymentList() {
     } else if (currentTab === 'income') {
       rows = merged.filter(r => r._kind === 'income');
     } else if (currentTab === 'expense') {
-      rows = merged.filter(r => r._kind === 'expense');
+      rows = merged.filter(r => r._kind === 'expense' || r._kind === 'exprec');
     } else if (currentTab === 'pending_income') {
       rows = merged.filter(r => r._kind === 'income' && r.status === 'pending_income');
     } else {
       // 既有支出狀態 (pending / deposit_paid / completed / cancelled)
-      rows = merged.filter(r => r.status === currentTab);
+      rows = merged.filter(r => r._kind === 'expense' && r.status === currentTab);
     }
 
     // 按日期排序（新到舊）
@@ -165,7 +172,44 @@ async function renderPaymentList() {
       return;
     }
 
-    container.innerHTML = rows.map(r => r._kind === 'income' ? renderIncomeCard(r) : renderExpenseCard(r)).join('');
+    container.innerHTML = rows.map(r =>
+      r._kind === 'income' ? renderIncomeCard(r)
+      : r._kind === 'exprec' ? renderExpenseRecordCard(r)
+      : renderExpenseCard(r)
+    ).join('');
+  }
+
+  // 系統 / 其他支出卡片
+  function renderExpenseRecordCard(x) {
+    const catMeta = x.category === 'system'
+      ? { emoji: '💻', text: '系統相關', chip: 'cat-service', accent: 'text-violet-700' }
+      : { emoji: '🧾', text: '其他支出', chip: 'cat-other',   accent: 'text-slate-700' };
+    return `
+      <div class="glass-record-expense p-5 mb-3 ${x.cancelled ? 'opacity-50' : ''}">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap mb-2">
+              <span class="status-chip" style="background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);color:white;border:0">${catMeta.emoji} ${catMeta.text}</span>
+              <span class="text-base font-semibold text-slate-900" style="letter-spacing:-0.015em">${escHtml(x.name)}</span>
+              ${x.label ? `<span class="category-chip ${catMeta.chip}">${escHtml(x.label)}</span>` : ''}
+              ${x.recurring ? `<span class="status-chip status-deposit-paid">🔁 每月固定</span>` : ''}
+            </div>
+            <div class="flex items-center gap-2 flex-wrap text-[11px] text-slate-400">
+              ${x.vendor ? `<span class="text-slate-500">${escHtml(x.vendor)}</span>` : ''}
+              ${x.payment_method ? `<span>${escHtml(x.payment_method)}</span>` : ''}
+              ${x.note ? `<span class="truncate max-w-[240px]">${escHtml(x.note)}</span>` : ''}
+            </div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="num-display text-xl text-slate-900">NT$${fmtMoney(x.amount)}${x.recurring ? '<span class="text-xs font-normal text-slate-400"> /月</span>' : ''}</div>
+            <div class="text-[11px] text-slate-400 mt-1">${x.recurring ? '起始 ' : ''}${fmtDate(x.expense_date)}</div>
+          </div>
+        </div>
+        <div class="flex justify-end gap-1.5 mt-3">
+          <button data-action="edit-expense" data-id="${x.id}" class="chip-btn chip-btn-primary">編輯</button>
+          <button data-action="delete-expense" data-id="${x.id}" data-name="${escHtml(x.name)}" class="chip-btn chip-btn-danger">刪除</button>
+        </div>
+      </div>`;
   }
 
   function renderIncomeCard(i) {
@@ -323,6 +367,10 @@ async function renderPaymentList() {
       if (k.start_date) dataMonths.push(k.start_date.slice(0, 7));
       if (k.paid_at)    dataMonths.push(k.paid_at.slice(0, 7));
     }
+    // 系統/其他支出月份
+    for (const x of allExpenseRecords) {
+      if (!x.cancelled && x.expense_date) dataMonths.push(x.expense_date.slice(0, 7));
+    }
 
     // 起點：2026/01；終點：當月與資料中最晚月份取大
     let cursor = new Date(2026, 0, 1);
@@ -435,11 +483,45 @@ async function renderPaymentList() {
     const monthKolCommissionPaid = monthKolPaid.reduce((s, k) => s + parseFloat(k.commission_amount || 0), 0);
     monthExpenseTotal += monthKolCommissionPaid;
 
+    // ── 系統/其他支出（含每月固定 recurring 邏輯）──
+    //   非固定：支出月份 === 篩選月才計入
+    //   每月固定：從起始月起，篩選月 >= 起始月即計入（訂閱持續中）
+    const monthsBetweenYM = (a, b) => {
+      const [ay, am] = a.split('-').map(Number);
+      const [by, bm] = b.split('-').map(Number);
+      return Math.max(0, (by - ay) * 12 + (bm - am) + 1);
+    };
+    const expenseInMonth = (x, ym) => {
+      if (x.cancelled) return false;
+      const startYM = (x.expense_date || '').slice(0, 7);
+      if (!startYM) return false;
+      if (x.recurring) return ym >= startYM;
+      return startYM === ym;
+    };
+    const monthExpenseRecs = isAll
+      ? allExpenseRecords.filter(x => !x.cancelled)
+      : allExpenseRecords.filter(x => expenseInMonth(x, filterYM));
+    const monthExpenseRecordTotal = isAll
+      ? 0  // 累計另算（見下）
+      : monthExpenseRecs.reduce((s, x) => s + parseFloat(x.amount || 0), 0);
+    monthExpenseTotal += monthExpenseRecordTotal;
+
     // ── 累計支出 ──
     const allOrdersActive = orders.filter(o => !o.cancelled);
     const allKolPaidTotal = allKolCommissions.filter(k => k.paid).reduce((s, k) => s + parseFloat(k.commission_amount || 0), 0);
+    // 系統/其他累計：非固定算一次；每月固定 = 金額 × (起始月→當月 的月數)
+    const allExpenseRecordTotal = allExpenseRecords
+      .filter(x => !x.cancelled)
+      .reduce((s, x) => {
+        const amt = parseFloat(x.amount || 0);
+        if (!x.recurring) return s + amt;
+        const startYM = (x.expense_date || '').slice(0, 7);
+        return s + amt * (startYM ? monthsBetweenYM(startYM, currentBrowserYM) : 1);
+      }, 0);
     const allExpenseTotal = allOrdersActive.reduce((s, o) =>
-      s + (parseFloat(o.actual_total_cost) || parseFloat(o.total_amount) || 0), 0) + allKolPaidTotal;
+      s + (parseFloat(o.actual_total_cost) || parseFloat(o.total_amount) || 0), 0)
+      + allKolPaidTotal + allExpenseRecordTotal;
+    if (isAll) monthExpenseTotal += allExpenseRecordTotal;
 
     // 本月淨利 + 累計淨利
     const monthNet = monthIncomeTotal - monthExpenseTotal;
@@ -484,7 +566,7 @@ async function renderPaymentList() {
           <span class="text-[10px] text-rose-600/60 font-mono">${monthLabel}</span>
         </div>
         <div class="num-display text-2xl text-rose-700">NT$${fmtMoney(monthExpenseTotal)}</div>
-        <div class="text-[11px] text-rose-500/70 mt-1.5">${monthOrders.length + monthKolPaid.length} 筆${monthKolCommissionPaid > 0 ? `（含 KOL 分潤 <span class="font-semibold text-pink-600">NT$${fmtMoney(monthKolCommissionPaid)}</span>）` : ''}${isAll ? '' : ` · 累計 <span class="font-semibold">NT$${fmtMoney(allExpenseTotal)}</span>`}</div>
+        <div class="text-[11px] text-rose-500/70 mt-1.5">${monthOrders.length + monthKolPaid.length + monthExpenseRecs.length} 筆${monthExpenseRecordTotal > 0 ? `（含系統/其他 <span class="font-semibold text-violet-600">NT$${fmtMoney(monthExpenseRecordTotal)}</span>）` : (monthKolCommissionPaid > 0 ? `（含 KOL 分潤 <span class="font-semibold text-pink-600">NT$${fmtMoney(monthKolCommissionPaid)}</span>）` : '')}${isAll ? '' : ` · 累計 <span class="font-semibold">NT$${fmtMoney(allExpenseTotal)}</span>`}</div>
       </div>
 
       <div class="glass-stat glass-stat-net">
@@ -547,11 +629,10 @@ async function renderPaymentList() {
   async function loadOrders() {
     const container = document.getElementById('order-list-content');
     try {
-      // 並行載入支出 + 收入 + KOL 分潤
-      const [orders, incomes, kolCommissions] = await Promise.all([
+      // 並行載入支出 + 收入 + KOL 分潤 + 系統/其他支出
+      const [orders, incomes, kolCommissions, expenseRecords] = await Promise.all([
         api.purchaseOrders.list(),
         api.incomeRecords.list().catch(err => {
-          // 收入表尚未 migrate 時不阻塞整頁，回空陣列
           if (isTableMissingError(err)) {
             console.warn('income_records 表尚未建立，請執行 migration_income_records.sql');
             return [];
@@ -565,10 +646,18 @@ async function renderPaymentList() {
           }
           throw err;
         }),
+        api.expenseRecords.list().catch(err => {
+          if (isTableMissingError(err)) {
+            console.warn('expense_records 表尚未建立，請執行 migration_expense_records.sql');
+            return [];
+          }
+          throw err;
+        }),
       ]);
       allOrders  = orders;
       allIncomes = incomes;
       allKolCommissions = kolCommissions;
+      allExpenseRecords = expenseRecords;
       loadStats(allOrders, allIncomes);
       renderOrders();
     } catch (err) {
@@ -638,6 +727,208 @@ async function renderPaymentList() {
 
   loadOrders();
   loadSuppliers();
+}
+
+// =====================================================
+// 新增支出 — 類型選擇器
+// =====================================================
+function showExpenseTypeChooser(onSave) {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `
+    <div class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" id="modal-overlay">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md font-apple">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h3 class="text-base font-semibold text-gray-900">新增支出 — 選擇類型</h3>
+          <button id="modal-close" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        </div>
+        <div class="px-6 py-5 space-y-3">
+          <button data-pick="order" class="exp-pick w-full text-left glass-card-soft p-4 hover:shadow-lg transition-all flex items-center gap-3">
+            <span class="text-2xl">📦</span>
+            <span class="flex-1">
+              <span class="block font-semibold text-slate-900">貨款記錄</span>
+              <span class="block text-xs text-slate-500 mt-0.5">向供應商採購，含訂金/尾款、入庫件數</span>
+            </span>
+            <span class="text-slate-300">→</span>
+          </button>
+          <button data-pick="system" class="exp-pick w-full text-left glass-card-soft p-4 hover:shadow-lg transition-all flex items-center gap-3">
+            <span class="text-2xl">💻</span>
+            <span class="flex-1">
+              <span class="block font-semibold text-slate-900">系統相關支出</span>
+              <span class="block text-xs text-slate-500 mt-0.5">雲端、AI、軟體訂閱等（可設每月固定）</span>
+            </span>
+            <span class="text-slate-300">→</span>
+          </button>
+          <button data-pick="other" class="exp-pick w-full text-left glass-card-soft p-4 hover:shadow-lg transition-all flex items-center gap-3">
+            <span class="text-2xl">🧾</span>
+            <span class="flex-1">
+              <span class="block font-semibold text-slate-900">其他支出</span>
+              <span class="block text-xs text-slate-500 mt-0.5">行銷工具、外包、雜支等共用費用</span>
+            </span>
+            <span class="text-slate-300">→</span>
+          </button>
+        </div>
+      </div>
+    </div>`;
+  function close() { root.innerHTML = ''; }
+  document.getElementById('modal-close').onclick = close;
+  document.getElementById('modal-overlay').onclick = e => { if (e.target === e.currentTarget) close(); };
+  root.querySelectorAll('.exp-pick').forEach(btn => {
+    btn.onclick = () => {
+      const pick = btn.dataset.pick;
+      close();
+      if (pick === 'order') showPurchaseOrderModal(null, onSave);
+      else                  showExpenseModal(null, pick, onSave);
+    };
+  });
+}
+
+// =====================================================
+// Modal：系統 / 其他支出
+// =====================================================
+const EXPENSE_LABEL_SUGGESTIONS = {
+  system: ['雲端費用', 'AI 系統費用', '軟體訂閱', '網域 / 主機', '金流手續費', '簡訊 / 通訊'],
+  other:  ['行銷工具', '設計外包', '辦公用品', '差旅交通', '雜支'],
+};
+function showExpenseModal(expense, category, onSave) {
+  const isEdit = !!expense;
+  const cat = expense?.category || category || 'other';
+  const root = document.getElementById('modal-root');
+  const meta = cat === 'system'
+    ? { title: '系統相關支出', emoji: '💻', accent: 'violet' }
+    : { title: '其他支出',     emoji: '🧾', accent: 'slate' };
+  const suggestions = EXPENSE_LABEL_SUGGESTIONS[cat] || [];
+
+  root.innerHTML = `
+    <div class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" id="modal-overlay">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto font-apple">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h3 class="text-base font-semibold text-gray-900">${isEdit ? '編輯' : '新增'}${meta.title}</h3>
+          <button id="modal-close" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        </div>
+        <form id="exp-form" class="px-6 py-4 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">子類別</label>
+            <input id="e-label" type="text" list="e-label-list" value="${escHtml(expense?.label || '')}"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              placeholder="${cat === 'system' ? '例：雲端費用、AI 系統費用' : '例：行銷工具、外包'}">
+            <datalist id="e-label-list">${suggestions.map(s => `<option value="${s}">`).join('')}</datalist>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">項目名稱 <span class="text-red-500">*</span></label>
+            <input id="e-name" type="text" required value="${escHtml(expense?.name || '')}"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              placeholder="${cat === 'system' ? '例：AWS EC2、ChatGPT Team' : '例：Canva Pro、攝影外包'}">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">廠商</label>
+              <input id="e-vendor" type="text" value="${escHtml(expense?.vendor || '')}"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                placeholder="選填，例：AWS">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">金額 <span class="text-red-500">*</span></label>
+              <div class="relative"><span class="absolute left-3 top-2 text-gray-400 text-sm">NT$</span>
+                <input id="e-amount" type="number" min="1" step="1" required value="${expense?.amount || ''}"
+                  class="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+              </div>
+            </div>
+          </div>
+          <!-- 每月固定 -->
+          <label class="flex items-start gap-2 cursor-pointer bg-violet-50 border border-violet-200 rounded-lg p-3">
+            <input id="e-recurring" type="checkbox" class="w-4 h-4 mt-0.5 text-violet-600 rounded" ${expense?.recurring ? 'checked' : ''}>
+            <span>
+              <span class="text-sm font-medium text-violet-800">🔁 每月固定支出（訂閱）</span>
+              <span class="block text-[11px] text-violet-600/80 mt-0.5">勾選後，從下方日期的月份起，每個月的支出統計都會自動算入這筆，不用每月重填</span>
+            </span>
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1" id="e-date-label">${expense?.recurring ? '起始月份' : '支出日期'} <span class="text-red-500">*</span></label>
+              <input id="e-date" type="date" required value="${expense?.expense_date || new Date().toISOString().slice(0,10)}"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">付款方式</label>
+              <select id="e-payment" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                <option value="">（選填）</option>
+                <option value="信用卡"   ${expense?.payment_method === '信用卡'   ? 'selected' : ''}>信用卡</option>
+                <option value="銀行轉帳" ${expense?.payment_method === '銀行轉帳' ? 'selected' : ''}>銀行轉帳</option>
+                <option value="現金"     ${expense?.payment_method === '現金'     ? 'selected' : ''}>現金</option>
+                <option value="其他"     ${expense?.payment_method === '其他'     ? 'selected' : ''}>其他</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">備註</label>
+            <input id="e-note" type="text" value="${escHtml(expense?.note || '')}"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" placeholder="選填">
+          </div>
+          ${isEdit ? `
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input id="e-cancelled" type="checkbox" class="w-4 h-4 text-red-600 rounded" ${expense?.cancelled ? 'checked' : ''}>
+            <span class="text-sm text-gray-600">標記為已取消</span>
+          </label>` : ''}
+          <div id="form-error" class="hidden text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2"></div>
+          <div class="flex gap-3 pt-2">
+            <button type="button" id="modal-cancel" class="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-50 text-sm">取消</button>
+            <button type="submit" id="modal-submit" class="flex-1 bg-violet-600 text-white py-2 rounded-lg hover:bg-violet-700 text-sm font-medium">儲存</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+
+  function close() { root.innerHTML = ''; }
+  document.getElementById('modal-close').onclick = close;
+  document.getElementById('modal-cancel').onclick = close;
+  document.getElementById('modal-overlay').onclick = e => { if (e.target === e.currentTarget) close(); };
+
+  // recurring toggle → 日期 label 改字
+  document.getElementById('e-recurring').onchange = function() {
+    document.getElementById('e-date-label').firstChild.textContent = (this.checked ? '起始月份' : '支出日期') + ' ';
+  };
+
+  document.getElementById('exp-form').onsubmit = async e => {
+    e.preventDefault();
+    const errEl = document.getElementById('form-error');
+    errEl.classList.add('hidden');
+    const btn = document.getElementById('modal-submit');
+    btn.disabled = true; btn.textContent = '儲存中…';
+    const body = {
+      category:       cat,
+      label:          document.getElementById('e-label').value.trim() || null,
+      name:           document.getElementById('e-name').value.trim(),
+      vendor:         document.getElementById('e-vendor').value.trim() || null,
+      amount:         parseFloat(document.getElementById('e-amount').value),
+      expense_date:   document.getElementById('e-date').value,
+      recurring:      document.getElementById('e-recurring').checked,
+      payment_method: document.getElementById('e-payment').value || null,
+      cancelled:      isEdit ? document.getElementById('e-cancelled').checked : false,
+      note:           document.getElementById('e-note').value.trim() || null,
+    };
+    try {
+      if (isEdit) await api.expenseRecords.update(expense.id, body);
+      else        await api.expenseRecords.create(body);
+      close();
+      if (onSave) onSave();
+      toast(isEdit ? '支出已更新' : '支出已新增');
+    } catch (err) {
+      errEl.textContent = err.message; errEl.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = '儲存';
+    }
+  };
+}
+
+async function deleteExpenseRecord(id, name, onDelete) {
+  const ok = await confirm(`確定要刪除「${name}」這筆支出嗎？`);
+  if (!ok) return;
+  try {
+    await api.expenseRecords.delete(id);
+    toast('已刪除');
+    if (onDelete) onDelete();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }
 
 // =====================================================
