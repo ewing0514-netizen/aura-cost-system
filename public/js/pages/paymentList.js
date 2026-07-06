@@ -172,11 +172,14 @@ async function renderPaymentList() {
       return;
     }
 
-    container.innerHTML = rows.map(r =>
-      r._kind === 'income' ? renderIncomeCard(r)
-      : r._kind === 'exprec' ? renderExpenseRecordCard(r)
-      : renderExpenseCard(r)
-    ).join('');
+    container.innerHTML = `
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+        ${rows.map(r =>
+          r._kind === 'income' ? renderIncomeCard(r)
+          : r._kind === 'exprec' ? renderExpenseRecordCard(r)
+          : renderExpenseCard(r)
+        ).join('')}
+      </div>`;
   }
 
   // 系統 / 其他支出卡片
