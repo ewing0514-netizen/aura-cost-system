@@ -147,6 +147,7 @@ async function renderPaymentList() {
       ...allOrders.map(o  => ({ ...o, _kind: 'expense',  _date: o.order_date,   _ts: o.order_date   + (o.created_at || '') })),
       ...allIncomes.map(i => ({ ...i, _kind: 'income',   _date: i.income_date,  _ts: i.income_date  + (i.created_at || '') })),
       ...allExpenseRecords.map(x => ({ ...x, _kind: 'exprec', _date: x.expense_date, _ts: x.expense_date + (x.created_at || '') })),
+      ...allKolCommissions.map(k => ({ ...k, _kind: 'kol', _date: k.start_date, _ts: (k.start_date || '') + (k.created_at || '') })),
     ];
 
     // 按目前 tab 過濾
@@ -154,7 +155,7 @@ async function renderPaymentList() {
     if (currentTab === 'all') {
       rows = merged;
     } else if (currentTab === 'income') {
-      rows = merged.filter(r => r._kind === 'income');
+      rows = merged.filter(r => r._kind === 'income' || r._kind === 'kol');
     } else if (currentTab === 'expense') {
       rows = merged.filter(r => r._kind === 'expense' || r._kind === 'exprec');
     } else if (currentTab === 'pending_income') {
@@ -176,6 +177,7 @@ async function renderPaymentList() {
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
         ${rows.map(r =>
           r._kind === 'income' ? renderIncomeCard(r)
+          : r._kind === 'kol' ? renderKolCard(r)
           : r._kind === 'exprec' ? renderExpenseRecordCard(r)
           : renderExpenseCard(r)
         ).join('')}
@@ -211,6 +213,58 @@ async function renderPaymentList() {
         <div class="flex justify-end gap-1.5 mt-3">
           <button data-action="edit-expense" data-id="${x.id}" class="chip-btn chip-btn-primary">編輯</button>
           <button data-action="delete-expense" data-id="${x.id}" data-name="${escHtml(x.name)}" class="chip-btn chip-btn-danger">刪除</button>
+        </div>
+      </div>`;
+  }
+
+  // KOL 團購收入卡片（資料來源：KOL 分潤頁，此處唯讀）
+  function renderKolCard(k) {
+    const sales      = parseFloat(k.sales_amount || 0);
+    const commission = parseFloat(k.commission_amount || 0);
+    const pct        = parseFloat(k.commission_pct || 0);
+    const net        = sales - commission;               // 扣分潤後淨收入
+    const partnerShare = net * 0.5;                       // 與統計一致：淨收入 50/50
+    const selfShare    = net - partnerShare;
+    const paidBadge = k.paid
+      ? `<span class="status-chip status-completed">✓ 分潤已付${k.paid_at ? ' ' + fmtDate(k.paid_at) : ''}</span>`
+      : `<span class="status-chip status-pending">⏳ 分潤待付</span>`;
+    return `
+      <div class="glass-record-income p-5 mb-3">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap mb-2">
+              <span class="status-chip" style="background:linear-gradient(135deg,#ec4899 0%,#db2777 100%);color:white;border:0">🎀 KOL 團購</span>
+              <span class="text-base font-semibold text-slate-900" style="letter-spacing:-0.015em">${escHtml(k.kol_name || 'KOL')}</span>
+              ${k.campaign_name ? `<span class="category-chip cat-service">${escHtml(k.campaign_name)}</span>` : ''}
+              ${paidBadge}
+            </div>
+            <div class="flex items-center gap-2 flex-wrap text-[11px] text-slate-400">
+              ${k.product_name ? `<span class="text-indigo-500/80">${escHtml(k.product_name)}</span>` : ''}
+              ${k.units_sold ? `<span>售出 ${k.units_sold} 件</span>` : ''}
+            </div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="num-display text-xl text-emerald-700">+NT$${fmtMoney(sales)}</div>
+            <div class="text-[11px] text-slate-400 mt-1">開團 ${fmtDate(k.start_date)}</div>
+          </div>
+        </div>
+        <!-- 分潤支出 + 淨收入拆分 -->
+        <div class="mt-3 pt-3 border-t border-emerald-200/40 text-xs space-y-1.5">
+          <div class="flex items-center justify-between text-pink-600">
+            <span>🎀 KOL 分潤 (${pct.toFixed(0)}%)</span>
+            <span class="num-display">−NT$${fmtMoney(commission)}</span>
+          </div>
+          <div class="flex items-center justify-between flex-wrap gap-2 pt-1.5 border-t border-dashed border-emerald-200/50">
+            <span class="text-slate-500">🤝 淨收入 <span class="num-display text-emerald-700 font-semibold">NT$${fmtMoney(net)}</span> · 合夥人 50% / 你 50%</span>
+            <span class="tabular-nums flex items-center gap-2">
+              <span class="text-purple-700 font-semibold">合夥人 NT$${fmtMoney(partnerShare)}</span>
+              <span class="text-slate-300">·</span>
+              <span class="text-indigo-700 font-semibold">你 NT$${fmtMoney(selfShare)}</span>
+            </span>
+          </div>
+        </div>
+        <div class="flex justify-end mt-3">
+          <a href="#/kols" class="chip-btn chip-btn-primary">於 KOL 分潤頁管理 →</a>
         </div>
       </div>`;
   }
