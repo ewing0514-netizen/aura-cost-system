@@ -22,6 +22,44 @@ function _cacheInvalidate(pathPrefix) {
   }
 }
 
+// ===== 資料庫喚醒偵測 + 全站自動重試 =====
+// Supabase 免費專案閒置會自動暫停，喚醒需數分鐘，期間 API 會回 fetch failed。
+// 這裡把這類錯誤轉成友善訊息，並啟動一個全域倒數，時間到自動重新整理，直到資料庫恢復。
+let _dbRetryTimer = null;
+function _dbWakingError(rawMsg) {
+  const err = new Error('資料庫喚醒中，將自動重試…');
+  err.code = 'DB_WAKING';
+  err.dbWaking = true;
+  err.rawMessage = rawMsg;
+  _scheduleDbRetry();
+  return err;
+}
+function _scheduleDbRetry(seconds = 20) {
+  if (_dbRetryTimer) return;                 // 已排程就不重複
+  let left = seconds;
+  const tick = () => {
+    left -= 1;
+    const el = document.getElementById('db-waking-countdown');
+    if (el) el.textContent = left;
+    if (left <= 0) { clearInterval(_dbRetryTimer); window.location.reload(); return; }
+  };
+  _dbRetryTimer = setInterval(tick, 1000);
+}
+// 給各頁面共用的友善錯誤區塊（含倒數）
+function renderLoadError(err, opts = {}) {
+  const pad = opts.small ? 'py-8' : 'py-12';
+  if (err && err.dbWaking) {
+    return `<div class="text-center ${pad}">
+      <div class="text-4xl mb-3">☕️</div>
+      <p class="text-slate-600 font-medium">資料庫喚醒中，請稍候…</p>
+      <p class="text-xs text-slate-400 mt-1.5">免費方案閒置後會自動暫停，正在恢復。<span id="db-waking-countdown">20</span> 秒後自動重試</p>
+      <button onclick="window.location.reload()" class="mt-4 text-xs text-indigo-600 hover:text-indigo-700 underline">立即重試</button>
+    </div>`;
+  }
+  return `<div class="text-center ${pad} text-red-500">載入失敗：${err?.message || '發生錯誤'}</div>`;
+}
+window.renderLoadError = renderLoadError;
+
 async function request(method, path, body) {
   const opts = {
     method,
@@ -45,8 +83,9 @@ async function request(method, path, body) {
   try {
     res = await fetch(BASE + path, opts);
   } catch (e) {
-    if (e.name === 'AbortError') throw new Error('請求逾時，請重新整理頁面');
-    throw e;
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw _dbWakingError('請求逾時，資料庫可能正在喚醒');
+    throw _dbWakingError(e.message || '連線失敗');   // 伺服器/網路層失敗
   } finally {
     clearTimeout(timer);
   }
@@ -54,7 +93,12 @@ async function request(method, path, body) {
   const json = await res.json();
 
   if (!json.success) {
-    const err = new Error(json.error?.message || '發生錯誤');
+    const rawMsg = json.error?.message || '發生錯誤';
+    // 後端連不到 Supabase（免費專案閒置被暫停 / 喚醒中）→ 轉成友善訊息並觸發自動重試
+    if (/fetch failed|ENOTFOUND|EAI_AGAIN|getaddrinfo|ECONNREFUSED|ETIMEDOUT|socket hang up/i.test(rawMsg)) {
+      throw _dbWakingError(rawMsg);
+    }
+    const err = new Error(rawMsg);
     err.code = json.error?.code;
     throw err;
   }

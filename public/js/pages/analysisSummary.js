@@ -155,7 +155,7 @@ async function renderAnalysisSummary() {
 
   } catch (err) {
     document.getElementById('summary-content').innerHTML =
-      `<div class="text-center py-12 text-red-500">載入失敗：${err.message}</div>`;
+      window.renderLoadError(err);
   }
 }
 

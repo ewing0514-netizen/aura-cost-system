@@ -132,7 +132,7 @@ async function renderInventoryList() {
         document.getElementById('inv-overview').innerHTML = '';
         document.getElementById('inv-stats').innerHTML = `<div class="col-span-2 md:col-span-4 text-center text-xs text-gray-400 py-4">執行 migration 後即可使用</div>`;
       } else {
-        document.getElementById('inv-movements').innerHTML = `<div class="text-center py-12 text-red-500">載入失敗：${err.message}</div>`;
+        document.getElementById('inv-movements').innerHTML = window.renderLoadError(err);
       }
     }
   }

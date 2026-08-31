@@ -125,7 +125,7 @@ async function renderProductList() {
       // 卡片渲染完後，在背景批量載入封面圖片（不阻塞初始顯示）
       lazyLoadCoverImages(products);
     } catch (err) {
-      container.innerHTML = `<div class="text-center py-12 text-red-500">載入失敗：${err.message}</div>`;
+      container.innerHTML = window.renderLoadError(err);
     }
   }
 
@@ -190,7 +190,7 @@ async function loadGlobalCosts() {
       };
     });
   } catch (err) {
-    container.innerHTML = `<div class="text-center py-8 text-red-500">載入失敗：${err.message}</div>`;
+    container.innerHTML = window.renderLoadError(err, {small:true});
   }
 }
 

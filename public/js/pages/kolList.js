@@ -204,7 +204,7 @@ async function renderKolList() {
         document.getElementById('kol-roster').innerHTML = '';
         document.getElementById('kol-stats').innerHTML = `<div class="col-span-2 md:col-span-4 text-center text-xs text-gray-400 py-4">執行 migration 後即可使用</div>`;
       } else {
-        document.getElementById('commission-list').innerHTML = `<div class="text-center py-12 text-red-500">載入失敗：${err.message}</div>`;
+        document.getElementById('commission-list').innerHTML = window.renderLoadError(err);
       }
     }
   }

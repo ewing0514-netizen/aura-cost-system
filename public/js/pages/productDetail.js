@@ -74,7 +74,7 @@ async function loadTab(tab) {
     if (tab === 'prices')   await renderPricesTab(container);
     if (tab === 'analysis') await renderAnalysisTab(container);
   } catch (err) {
-    container.innerHTML = `<div class="text-center py-12 text-red-500">載入失敗：${err.message}</div>`;
+    container.innerHTML = window.renderLoadError(err);
   }
 }
 

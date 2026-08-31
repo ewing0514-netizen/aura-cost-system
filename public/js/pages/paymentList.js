@@ -722,7 +722,7 @@ async function renderPaymentList() {
         container.innerHTML = renderMigrationNotice();
         document.getElementById('payment-stats').innerHTML = `<div class="col-span-2 md:col-span-4 text-center text-xs text-gray-400 py-4">執行 migration 後即可看到統計資料</div>`;
       } else {
-        container.innerHTML = `<div class="text-center py-12 text-red-500">載入失敗：${err.message}</div>`;
+        container.innerHTML = window.renderLoadError(err);
       }
     }
   }
@@ -773,7 +773,7 @@ async function renderPaymentList() {
       if (isTableMissingError(err)) {
         container.innerHTML = renderMigrationNotice();
       } else {
-        container.innerHTML = `<div class="text-center py-8 text-red-500 text-sm">載入失敗：${err.message}</div>`;
+        container.innerHTML = window.renderLoadError(err, {small:true});
       }
     }
   }
