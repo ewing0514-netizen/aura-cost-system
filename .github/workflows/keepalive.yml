@@ -1,0 +1,26 @@
+name: Keep Supabase Alive
+
+# 每 12 小時打一次線上 API（會查詢 Supabase），避免免費專案閒置被自動暫停。
+# Supabase 免費版約閒置 7 天才暫停，每 12 小時遠超足夠。
+on:
+  schedule:
+    - cron: '0 */12 * * *'   # UTC 每 12 小時（約台灣 08:00 / 20:00）
+  workflow_dispatch: {}        # 也可在 Actions 頁面手動觸發
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping app API to keep the database warm
+        run: |
+          BASE="https://aura-cost-system-production.up.railway.app/api/v1"
+          fail=0
+          for ep in products costs kols/commissions inventory/summary; do
+            code=$(curl -s -m 30 -o /dev/null -w "%{http_code}" "$BASE/$ep")
+            echo "$ep -> HTTP $code"
+            [ "$code" = "200" ] || fail=1
+          done
+          if [ "$fail" = "1" ]; then
+            echo "::warning::至少一個端點未回 200，資料庫可能正在喚醒或異常"
+          fi
+          exit 0
