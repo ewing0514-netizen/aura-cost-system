@@ -11,16 +11,13 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping app API to keep the database warm
+      - name: Ping health endpoint to keep the database warm
         run: |
-          BASE="https://aura-cost-system-production.up.railway.app/api/v1"
-          fail=0
-          for ep in products costs kols/commissions inventory/summary; do
-            code=$(curl -s -m 30 -o /dev/null -w "%{http_code}" "$BASE/$ep")
-            echo "$ep -> HTTP $code"
-            [ "$code" = "200" ] || fail=1
-          done
-          if [ "$fail" = "1" ]; then
-            echo "::warning::至少一個端點未回 200，資料庫可能正在喚醒或異常"
+          # /healthz 為公開端點（不需密碼），內部會查詢 Supabase 一次以保持活躍，但不回傳任何資料
+          URL="https://aura-cost-system-production.up.railway.app/healthz"
+          code=$(curl -s -m 30 -o /tmp/h.json -w "%{http_code}" "$URL")
+          echo "healthz -> HTTP $code · $(cat /tmp/h.json)"
+          if [ "$code" != "200" ]; then
+            echo "::warning::healthz 未回 200，資料庫可能正在喚醒或異常"
           fi
           exit 0

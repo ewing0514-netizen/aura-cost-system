@@ -6,6 +6,7 @@ const compression  = require('compression');
 const path         = require('path');
 const routes       = require('./routes/index');
 const errorHandler = require('./middleware/errorHandler');
+const basicAuth    = require('./middleware/basicAuth');
 
 const PORT = process.env.PORT || 3000;
 
@@ -13,6 +14,22 @@ const app = express();
 
 // gzip 壓縮所有回應（減少傳輸量約 60-80%）
 app.use(compression());
+
+// 健康檢查（公開，供保活排程用；會戳一下資料庫但不回傳任何資料）
+app.get('/healthz', async (req, res) => {
+  try {
+    const supabase = require('./config/database');
+    const { error } = await supabase.from('products').select('id').limit(1);
+    if (error) throw error;
+    res.json({ ok: true, db: 'up' });
+  } catch (e) {
+    res.status(503).json({ ok: false, db: 'down' });
+  }
+});
+
+// 🔒 密碼閘門：除了 /healthz 之外，全站（前端 + API）都要通過 Basic Auth
+app.use(basicAuth);
+
 app.use(cors());
 app.use(express.json({ limit: '5mb' })); // 支援 base64 封面圖片
 
