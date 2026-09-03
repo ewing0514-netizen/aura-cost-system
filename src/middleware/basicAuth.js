@@ -29,6 +29,7 @@ module.exports = function basicAuth(req, res, next) {
     if (safeEqual(user, USER) && safeEqual(pass, PASS)) return next();
   }
 
-  res.setHeader('WWW-Authenticate', 'Basic realm="AURA 成本系統", charset="UTF-8"');
+  // 注意：HTTP header 值只能是 ASCII，realm 不可用中文，否則會 ERR_INVALID_CHAR
+  res.setHeader('WWW-Authenticate', 'Basic realm="AURA Cost System", charset="UTF-8"');
   return res.status(401).send('需要授權才能存取');
 };
