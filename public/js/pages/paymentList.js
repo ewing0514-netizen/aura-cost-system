@@ -186,17 +186,15 @@ async function renderPaymentList() {
 
   // 系統 / 其他支出卡片
   function renderExpenseRecordCard(x) {
-    const catMeta = x.category === 'system'
-      ? { emoji: '💻', text: '系統相關', chip: 'cat-service', accent: 'text-violet-700' }
-      : { emoji: '🧾', text: '其他支出', chip: 'cat-other',   accent: 'text-slate-700' };
+    const catMeta = expenseCatMeta(x.category);
     return `
       <div class="glass-record-expense p-5 mb-3 ${x.cancelled ? 'opacity-50' : ''}">
         <div class="flex items-start justify-between gap-4">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap mb-2">
-              <span class="status-chip" style="background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);color:white;border:0">${catMeta.emoji} ${catMeta.text}</span>
+              <span class="status-chip" style="background:${catMeta.color};color:white;border:0">${catMeta.emoji} ${catMeta.text}</span>
               <span class="text-base font-semibold text-slate-900" style="letter-spacing:-0.015em">${escHtml(x.name)}</span>
-              ${x.label ? `<span class="category-chip ${catMeta.chip}">${escHtml(x.label)}</span>` : ''}
+              ${x.label ? `<span class="category-chip" style="background:${catMeta.color}1a;color:${catMeta.color};border-color:${catMeta.color}55">${escHtml(x.label)}</span>` : ''}
               ${x.recurring ? `<span class="status-chip status-deposit-paid">🔁 每月固定</span>` : ''}
             </div>
             <div class="flex items-center gap-2 flex-wrap text-[11px] text-slate-400">
@@ -715,6 +713,8 @@ async function renderPaymentList() {
       allIncomes = incomes;
       allKolCommissions = kolCommissions;
       allExpenseRecords = expenseRecords;
+      // 累積使用者用過的自訂類別，讓它們在新增支出時出現在選項中
+      _customExpenseCats = [...new Set(expenseRecords.map(x => normalizeExpenseCat(x.category)))];
       loadStats(allOrders, allIncomes);
       renderOrders();
     } catch (err) {
@@ -789,6 +789,42 @@ async function renderPaymentList() {
 // =====================================================
 // 新增支出 — 類型選擇器
 // =====================================================
+// =====================================================
+// 支出類別（可自訂）
+//   預設類別 + 使用者已用過的自訂類別（自動累積，存在 expense_records.category）
+// =====================================================
+const EXPENSE_CATEGORIES = [
+  { key: '系統相關', emoji: '💻', color: '#8b5cf6' },
+  { key: '行銷費',   emoji: '📣', color: '#ec4899' },
+  { key: '產品花費', emoji: '🧴', color: '#0ea5e9' },
+  { key: '行政費',   emoji: '🏢', color: '#f59e0b' },
+  { key: '其他',     emoji: '🧾', color: '#64748b' },
+];
+// 自訂類別配色盤（依名稱雜湊取穩定顏色）
+const _EXP_CAT_PALETTE = ['#14b8a6', '#6366f1', '#f43f5e', '#84cc16', '#a855f7', '#f97316', '#06b6d4', '#eab308'];
+let _customExpenseCats = []; // 由 loadOrders 依現有記錄填入
+
+// 舊代碼相容：system → 系統相關、other → 其他
+function normalizeExpenseCat(c) {
+  if (c === 'system') return '系統相關';
+  if (c === 'other')  return '其他';
+  return (c && String(c).trim()) || '其他';
+}
+function _hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) >>> 0; } return h; }
+function expenseCatMeta(rawCat) {
+  const name = normalizeExpenseCat(rawCat);
+  const preset = EXPENSE_CATEGORIES.find(c => c.key === name);
+  if (preset) return { text: name, emoji: preset.emoji, color: preset.color };
+  const color = _EXP_CAT_PALETTE[_hashStr(name) % _EXP_CAT_PALETTE.length];
+  return { text: name, emoji: '🏷️', color };
+}
+// 全部可選類別 = 預設 ∪ 已用過的自訂
+function getExpenseCategoryList() {
+  const list = EXPENSE_CATEGORIES.map(c => c.key);
+  for (const c of _customExpenseCats) { const n = normalizeExpenseCat(c); if (n && !list.includes(n)) list.push(n); }
+  return list;
+}
+
 function showExpenseTypeChooser(onSave) {
   const root = document.getElementById('modal-root');
   root.innerHTML = `
@@ -807,19 +843,11 @@ function showExpenseTypeChooser(onSave) {
             </span>
             <span class="text-slate-300">→</span>
           </button>
-          <button data-pick="system" class="exp-pick w-full text-left glass-card-soft p-4 hover:shadow-lg transition-all flex items-center gap-3">
-            <span class="text-2xl">💻</span>
-            <span class="flex-1">
-              <span class="block font-semibold text-slate-900">系統相關支出</span>
-              <span class="block text-xs text-slate-500 mt-0.5">雲端、AI、軟體訂閱等（可設每月固定）</span>
-            </span>
-            <span class="text-slate-300">→</span>
-          </button>
-          <button data-pick="other" class="exp-pick w-full text-left glass-card-soft p-4 hover:shadow-lg transition-all flex items-center gap-3">
+          <button data-pick="expense" class="exp-pick w-full text-left glass-card-soft p-4 hover:shadow-lg transition-all flex items-center gap-3">
             <span class="text-2xl">🧾</span>
             <span class="flex-1">
-              <span class="block font-semibold text-slate-900">其他支出</span>
-              <span class="block text-xs text-slate-500 mt-0.5">行銷工具、外包、雜支等共用費用</span>
+              <span class="block font-semibold text-slate-900">一般支出</span>
+              <span class="block text-xs text-slate-500 mt-0.5">系統、行銷費、產品花費、行政費…可自選或新增類別（可設每月固定）</span>
             </span>
             <span class="text-slate-300">→</span>
           </button>
@@ -834,7 +862,7 @@ function showExpenseTypeChooser(onSave) {
       const pick = btn.dataset.pick;
       close();
       if (pick === 'order') showPurchaseOrderModal(null, onSave);
-      else                  showExpenseModal(null, pick, onSave);
+      else                  showExpenseModal(null, '其他', onSave);
     };
   });
 }
@@ -848,33 +876,48 @@ const EXPENSE_LABEL_SUGGESTIONS = {
 };
 function showExpenseModal(expense, category, onSave) {
   const isEdit = !!expense;
-  const cat = expense?.category || category || 'other';
+  let selectedCat = normalizeExpenseCat(expense?.category || category || '其他');
   const root = document.getElementById('modal-root');
-  const meta = cat === 'system'
-    ? { title: '系統相關支出', emoji: '💻', accent: 'violet' }
-    : { title: '其他支出',     emoji: '🧾', accent: 'slate' };
-  const suggestions = EXPENSE_LABEL_SUGGESTIONS[cat] || [];
+
+  const catChips = () => getExpenseCategoryList().map(name => {
+    const m = expenseCatMeta(name);
+    const on = name === selectedCat;
+    return `<button type="button" class="cat-chip inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
+      data-cat="${escHtml(name)}"
+      style="${on ? `background:${m.color};color:#fff;border-color:${m.color}` : `background:${m.color}14;color:${m.color};border-color:${m.color}55`}">
+      ${m.emoji} ${escHtml(name)}</button>`;
+  }).join('');
 
   root.innerHTML = `
     <div class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" id="modal-overlay">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto font-apple">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 class="text-base font-semibold text-gray-900">${isEdit ? '編輯' : '新增'}${meta.title}</h3>
+          <h3 class="text-base font-semibold text-gray-900">${isEdit ? '編輯支出' : '新增支出'}</h3>
           <button id="modal-close" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
         <form id="exp-form" class="px-6 py-4 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">子類別</label>
-            <input id="e-label" type="text" list="e-label-list" value="${escHtml(expense?.label || '')}"
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">類別 <span class="text-red-500">*</span></label>
+            <div id="cat-chips" class="flex flex-wrap gap-1.5">${catChips()}
+              <button type="button" id="cat-add-btn" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-dashed border-gray-400 text-gray-500 hover:bg-gray-50">＋ 新增類別</button>
+            </div>
+            <div id="cat-add-row" class="hidden mt-2 flex gap-2">
+              <input id="cat-new-input" type="text" maxlength="20" placeholder="輸入新類別名稱，例：物流費"
+                class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+              <button type="button" id="cat-new-ok" class="px-3 py-1.5 bg-violet-600 text-white rounded-lg text-sm">加入</button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">子標籤 <span class="text-gray-400 text-xs">（選填）</span></label>
+            <input id="e-label" type="text" value="${escHtml(expense?.label || '')}"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-              placeholder="${cat === 'system' ? '例：雲端費用、AI 系統費用' : '例：行銷工具、外包'}">
-            <datalist id="e-label-list">${suggestions.map(s => `<option value="${s}">`).join('')}</datalist>
+              placeholder="更細的分類，例：雲端費用、FB 廣告">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">項目名稱 <span class="text-red-500">*</span></label>
             <input id="e-name" type="text" required value="${escHtml(expense?.name || '')}"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-              placeholder="${cat === 'system' ? '例：AWS EC2、ChatGPT Team' : '例：Canva Pro、攝影外包'}">
+              placeholder="例：AWS EC2、Canva Pro、外盒印刷">
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
@@ -940,6 +983,53 @@ function showExpenseModal(expense, category, onSave) {
   document.getElementById('modal-cancel').onclick = close;
   document.getElementById('modal-overlay').onclick = e => { if (e.target === e.currentTarget) close(); };
 
+  // 類別 chip：點擊切換選取、重繪
+  const chipsWrap = document.getElementById('cat-chips');
+  function repaintChips() {
+    chipsWrap.querySelectorAll('.cat-chip').forEach(btn => {
+      const m = expenseCatMeta(btn.dataset.cat);
+      const on = btn.dataset.cat === selectedCat;
+      btn.style.cssText = on
+        ? `background:${m.color};color:#fff;border-color:${m.color}`
+        : `background:${m.color}14;color:${m.color};border-color:${m.color}55`;
+    });
+  }
+  function bindChip(btn) {
+    btn.onclick = () => { selectedCat = btn.dataset.cat; repaintChips(); };
+  }
+  chipsWrap.querySelectorAll('.cat-chip').forEach(bindChip);
+
+  // 新增類別
+  const addRow = document.getElementById('cat-add-row');
+  document.getElementById('cat-add-btn').onclick = () => {
+    addRow.classList.toggle('hidden');
+    if (!addRow.classList.contains('hidden')) document.getElementById('cat-new-input').focus();
+  };
+  function addNewCat() {
+    const input = document.getElementById('cat-new-input');
+    const name = normalizeExpenseCat(input.value.trim());
+    if (!name) return;
+    if (!getExpenseCategoryList().includes(name)) {
+      _customExpenseCats.push(name);
+      const m = expenseCatMeta(name);
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'cat-chip inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all';
+      el.dataset.cat = name;
+      el.innerHTML = `${m.emoji} ${escHtml(name)}`;
+      chipsWrap.insertBefore(el, document.getElementById('cat-add-btn'));
+      bindChip(el);
+    }
+    selectedCat = name;
+    repaintChips();
+    input.value = '';
+    addRow.classList.add('hidden');
+  }
+  document.getElementById('cat-new-ok').onclick = addNewCat;
+  document.getElementById('cat-new-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addNewCat(); }
+  });
+
   // recurring toggle → 日期 label 改字
   document.getElementById('e-recurring').onchange = function() {
     document.getElementById('e-date-label').firstChild.textContent = (this.checked ? '起始月份' : '支出日期') + ' ';
@@ -952,7 +1042,7 @@ function showExpenseModal(expense, category, onSave) {
     const btn = document.getElementById('modal-submit');
     btn.disabled = true; btn.textContent = '儲存中…';
     const body = {
-      category:       cat,
+      category:       selectedCat,
       label:          document.getElementById('e-label').value.trim() || null,
       name:           document.getElementById('e-name').value.trim(),
       vendor:         document.getElementById('e-vendor').value.trim() || null,

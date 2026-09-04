@@ -1,10 +1,10 @@
 const supabase = require('../config/database');
 const Joi = require('joi');
 
-const VALID_CATEGORIES = ['system', 'other'];
-
+// 類別改為可自訂：接受任何非空字串（如「系統相關」「行銷費」「產品花費」「行政費」…）
+// 保留舊代碼 'system' / 'other' 相容既有資料
 const schema = Joi.object({
-  category:       Joi.string().valid(...VALID_CATEGORIES).default('other'),
+  category:       Joi.string().trim().min(1).max(20).default('其他'),
   label:          Joi.string().trim().max(100).allow('', null).optional(),
   name:           Joi.string().trim().min(1).max(255).required(),
   vendor:         Joi.string().trim().max(255).allow('', null).optional(),
