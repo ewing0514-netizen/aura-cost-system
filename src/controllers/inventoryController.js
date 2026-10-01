@@ -107,7 +107,7 @@ async function listMovements(req, res, next) {
 async function summary(req, res, next) {
   try {
     const [{ data: products, error: pErr }, { data: movements, error: mErr }] = await Promise.all([
-      supabase.from('products').select('id, name, safety_stock').eq('is_active', true).order('created_at', { ascending: false }),
+      supabase.from('products').select('id, name, sku, safety_stock').eq('is_active', true).order('created_at', { ascending: false }),
       supabase.from('inventory_movements').select('product_id, type, quantity'),
     ]);
     if (pErr) throw pErr;
@@ -123,7 +123,8 @@ async function summary(req, res, next) {
       else                     p.totalAdjust += q;
     }
 
-    const rows = products.map(p => {
+    // 組合商品（sku 以 BUNDLE- 開頭）不獨立管庫存
+    const rows = products.filter(p => !/^BUNDLE-/i.test(p.sku || '')).map(p => {
       const agg = byProduct[p.id] || { current: 0, totalIn: 0, totalOut: 0, totalAdjust: 0 };
       const safety = parseInt(p.safety_stock) || 0;
       let status = 'ok';

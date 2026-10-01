@@ -27,7 +27,7 @@ async function list(req, res, next) {
       const { data, error } = await supabase
         .from('products')
         .select(`
-          id, name, description, is_active, created_at, safety_stock,
+          id, name, description, sku, is_active, created_at, safety_stock,
           cost_items(amount),
           price_tiers(id, is_active, price_type, amount)
         `)
@@ -49,6 +49,8 @@ async function list(req, res, next) {
           price_count:  activePriceTiers.length,
           normal_price: normalTier ? parseFloat(normalTier.amount) : null,
           safety_stock: parseInt(p.safety_stock) || 0,
+          // 組合商品（sku 以 BUNDLE- 開頭）不獨立管庫存，庫存看組成的單品
+          is_bundle:    /^BUNDLE-/i.test(p.sku || ''),
         };
       });
       cache.set(LIST_CACHE_KEY, base, LIST_TTL_MS);
@@ -57,6 +59,7 @@ async function list(req, res, next) {
     // 庫存即時疊加（不快取，因為進貨/出貨會隨時變動）
     const stockMap = await inventory.computeStockMap();
     const products = base.map(p => {
+      if (p.is_bundle) return { ...p, current_stock: null, stock_status: null };
       const current = stockMap[p.id] || 0;
       const safety  = p.safety_stock || 0;
       let stockStatus = 'ok';
