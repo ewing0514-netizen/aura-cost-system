@@ -31,40 +31,28 @@
         <span class="font-semibold text-slate-900" style="letter-spacing:-0.015em">成本系統</span>
       </a>
       <div class="flex items-center gap-0.5">
-        <a href="#/" data-nav="home" class="nav-link active">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-          </svg>
-          產品列表
+        <a href="#/" data-nav="home" class="nav-link">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          總覽
         </a>
-        <a href="#/analysis" data-nav="analysis" class="nav-link">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-          </svg>
-          損益總覽
+        <a href="#/payments" data-nav="ledger" class="nav-link">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+          記帳
         </a>
-        <a href="#/payments" data-nav="payments" class="nav-link">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-          </svg>
-          現金財務記錄
-        </a>
-        <a href="#/kols" data-nav="kols" class="nav-link">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-          </svg>
-          KOL 分潤
+        <a href="#/products" data-nav="products" class="nav-link">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+          產品與定價
         </a>
         <a href="#/inventory" data-nav="inventory" class="nav-link">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7l8 4 8-4"/>
-          </svg>
-          庫存管理
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+          庫存
         </a>
       </div>
     </div>
   </nav>
+
+  <!-- 子分頁（記帳、產品與定價）-->
+  <div id="subnav"></div>
 
   <!-- 主要內容區 -->
   <main id="app" class="min-h-[calc(100vh-3.5rem)]">
@@ -82,12 +70,14 @@
   <!-- JavaScript（defer：非阻塞載入，DOMContentLoaded 後依序執行）-->
   <script defer src="/js/api.js"></script>
   <script defer src="/js/utils.js"></script>
+  <script defer src="/js/finance.js"></script>
   <script defer src="/js/pages/productList.js"></script>
   <script defer src="/js/pages/productDetail.js"></script>
   <script defer src="/js/pages/analysisSummary.js"></script>
   <script defer src="/js/pages/paymentList.js"></script>
   <script defer src="/js/pages/kolList.js"></script>
   <script defer src="/js/pages/inventoryList.js"></script>
+  <script defer src="/js/pages/dashboard.js"></script>
   <script defer src="/js/router.js"></script>
 </body>
 </html>

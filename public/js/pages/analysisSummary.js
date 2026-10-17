@@ -100,7 +100,7 @@ async function renderAnalysisSummary() {
             </svg>
           </button>
           <div>
-            <h1 class="h-display">損益總覽</h1>
+            <h1 class="h-display">損益模擬器</h1>
             <p class="section-subtitle">官網 / KOL 團購 / B 端採購 三通路損益分析</p>
           </div>
         </div>
@@ -111,7 +111,7 @@ async function renderAnalysisSummary() {
     </div>
   `;
 
-  document.getElementById('btn-back').onclick = () => { window.location.hash = '#/'; };
+  document.getElementById('btn-back').onclick = () => { window.location.hash = '#/products'; };
 
   try {
     _simLoad();

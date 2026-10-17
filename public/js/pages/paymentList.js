@@ -585,10 +585,12 @@ async function renderPaymentList() {
     const netColorAll = allNet >= 0   ? 'text-emerald-600' : 'text-rose-500';
 
     // 待付總額（訂金 + 尾款 + KOL 未付分潤）
-    const totalPendingDeposit = orders.filter(o => o.status === 'pending').reduce((s, o) => s + parseFloat(o.deposit_amount || 0), 0);
-    const totalPendingBalance = orders.filter(o => o.status === 'deposit_paid').reduce((s, o) => s + parseFloat(o.balance_amount || 0), 0);
-    const totalPendingKol     = allKolCommissions.filter(k => !k.paid).reduce((s, k) => s + parseFloat(k.commission_amount || 0), 0);
-    const totalPending        = totalPendingDeposit + totalPendingBalance + totalPendingKol;
+    // 與總覽共用：每張未完成貨款單的未付訂金＋未付尾款，加未付 KOL 分潤
+    const pendingInfo         = computePending({ orders, kols: allKolCommissions });
+    const totalPendingDeposit = pendingInfo.deposit;
+    const totalPendingBalance = pendingInfo.balance;
+    const totalPendingKol     = pendingInfo.kol;
+    const totalPending        = pendingInfo.total;
 
     // 分潤拆分（本月）
     const monthExpenseHalf = monthExpenseTotal / 2;

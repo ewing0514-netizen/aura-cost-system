@@ -38,7 +38,7 @@ async function renderProductDetail(productId) {
     </div>
   `;
 
-  document.getElementById('btn-back').onclick = () => { window.location.hash = '#/'; };
+  document.getElementById('btn-back').onclick = () => { window.location.hash = '#/products'; };
 
   // 載入產品基本資訊
   try {
@@ -107,7 +107,7 @@ async function renderCostsTab(container) {
 
     <p class="text-xs text-gray-400 mt-5 text-center">
       💡 營運、行銷、其他成本請在
-      <a href="#/" class="text-indigo-400 hover:underline">首頁 Dashboard</a> 管理
+      <a href="#/products" class="text-indigo-400 hover:underline">產品列表</a> 管理
     </p>
   `;
 
