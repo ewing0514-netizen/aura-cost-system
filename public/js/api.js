@@ -210,6 +210,15 @@ const api = {
     delete: (id)      => request('DELETE', `/kols/commissions/${id}`),
   },
 
+  // KOL 樣品寄送
+  kolSamples: {
+    list:      ()        => request('GET',    '/kols/samples'),
+    create:    (body)    => request('POST',   '/kols/samples', body),
+    update:    (id, b)   => request('PUT',    `/kols/samples/${id}`, b),
+    setStatus: (id, st)  => request('PATCH',  `/kols/samples/${id}/status`, { status: st }),
+    delete:    (id)      => request('DELETE', `/kols/samples/${id}`),
+  },
+
   // 庫存
   inventory: {
     summary: ()       => request('GET',    '/inventory/summary'),

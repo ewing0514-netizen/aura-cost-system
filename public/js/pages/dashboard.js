@@ -299,14 +299,14 @@ function sectionStock(d) {
           <thead><tr class="text-xs text-slate-500">
             <th class="px-3 py-2 text-left font-medium">產品</th>
             <th class="px-3 py-2 text-right font-medium">剩幾件</th>
-            <th class="px-3 py-2 text-right font-medium">每月約賣</th>
+            <th class="px-3 py-2 text-right font-medium">每月約出貨</th>
             <th class="px-3 py-2 text-right font-medium">還能賣</th>
             <th class="px-3 py-2 text-right font-medium">狀態</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <p class="text-[11px] text-slate-500 mt-2">「每月約賣」用近 90 天的出貨量平均；KOL 開團有填件數會自動算進出貨。組合商品的庫存看裡面的單品。</p>
+      <p class="text-[11px] text-slate-500 mt-2">「每月約出貨」用近 90 天的出貨量平均，包含賣出和寄給 KOL 的樣品；KOL 開團有填件數會自動算進出貨。組合商品的庫存看裡面的單品。</p>
       <div class="text-right mt-1"><a href="#/inventory" class="text-xs text-indigo-600 hover:underline">進貨或盤點 →</a></div>
     </section>`;
 }

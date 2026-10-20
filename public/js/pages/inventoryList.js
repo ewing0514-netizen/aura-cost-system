@@ -31,6 +31,7 @@ async function renderInventoryList() {
           <div class="flex items-center gap-2">
             <button id="btn-inv-in"     class="btn-apple-income">＋ 進貨</button>
             <button id="btn-inv-out"    class="btn-apple-pink">＋ 出貨</button>
+            <button id="btn-inv-sample" class="btn-apple-pink">🎁 寄樣品</button>
             <button id="btn-inv-adjust" class="btn-apple-ghost">⚖️ 盤點</button>
           </div>
         </div>
@@ -45,6 +46,17 @@ async function renderInventoryList() {
           <h2 class="section-title">📦 各產品庫存</h2>
         </div>
         <div id="inv-overview"><div class="flex justify-center py-8"><div class="spinner"></div></div></div>
+
+        <div class="glass-divider my-10"></div>
+
+        <!-- KOL 樣品寄送 -->
+        <div class="section-header mb-4">
+          <div>
+            <h2 class="section-title">🎁 KOL 樣品</h2>
+            <p class="section-subtitle">寄給誰、寄了幾支、花了多少，後來有沒有開團</p>
+          </div>
+        </div>
+        <div id="inv-samples"><div class="flex justify-center py-8"><div class="spinner"></div></div></div>
 
         <div class="glass-divider my-10"></div>
 
@@ -83,6 +95,12 @@ async function renderInventoryList() {
   document.getElementById('btn-inv-in').onclick     = () => showMovementModal(null, products, refresh, 'in');
   document.getElementById('btn-inv-out').onclick    = () => showMovementModal(null, products, refresh, 'out');
   document.getElementById('btn-inv-adjust').onclick = () => showMovementModal(null, products, refresh, 'adjust');
+  document.getElementById('btn-inv-sample').onclick = () => {
+    if (typeof showSampleModal !== 'function' || !document.querySelector('#inv-samples .glass-card-soft, #inv-samples table')) {
+      toast('樣品功能還沒啟用，請先建立資料表', 'error'); return;
+    }
+    showSampleModal(null);
+  };
 
   // 事件委派：異動列表
   document.getElementById('inv-movements').addEventListener('click', e => {
@@ -91,7 +109,7 @@ async function renderInventoryList() {
     const m = allMovements.find(x => x.id === btn.dataset.id);
     if (!m) return;
     if (btn.dataset.action === 'edit-mov') {
-      if (m.ref_type !== 'manual') { toast('此筆由採購單／KOL 開團自動產生，請至來源編輯', 'error'); return; }
+      if (m.ref_type !== 'manual') { toast('此筆由採購單／KOL 開團／寄樣品自動產生，請至來源編輯', 'error'); return; }
       showMovementModal(m, products, refresh);
     } else if (btn.dataset.action === 'del-mov') {
       if (m.ref_type !== 'manual') { toast('此筆由來源自動產生，請至來源刪除', 'error'); return; }
@@ -126,6 +144,7 @@ async function renderInventoryList() {
       renderMonthSelector();
       renderFilter();
       renderMovements();
+      renderSampleSection('inv-samples', refresh);
     } catch (err) {
       if (isMissing(err)) {
         document.getElementById('inv-movements').innerHTML = migrationNotice();
@@ -327,7 +346,7 @@ async function renderInventoryList() {
     const qty = parseInt(m.quantity) || 0;
     const qtyColor = qty > 0 ? 'text-emerald-700' : qty < 0 ? 'text-rose-700' : 'text-slate-500';
     const channelLabel = m.channel ? (INV_CHANNEL_LABEL[m.channel] || m.channel) : '—';
-    const refLabel = m.ref_type === 'purchase_order' ? '採購單' : m.ref_type === 'kol_commission' ? 'KOL 開團' : '手動';
+    const refLabel = m.ref_type === 'purchase_order' ? '採購單' : m.ref_type === 'kol_commission' ? 'KOL 開團' : m.ref_type === 'kol_sample' ? '寄樣品' : '手動';
     const isManual = m.ref_type === 'manual';
     return `
       <tr class="hover:bg-gray-50 transition-colors">
