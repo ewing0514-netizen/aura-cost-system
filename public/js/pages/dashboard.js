@@ -222,6 +222,7 @@ function sectionUnitProfit(d) {
     const kolLow = groups[0];
     const kolLabel = groups.length > 1 ? '最低團購價' : '';
     const b2b = all.find(x => x.price_type === 'custom') || all.find(x => x.price_type === 'member');
+    const promo = all.find(x => x.price_type === 'promotion');
     const name = sp.product_name.replace(/^【組合】/, '');
     return `<tr class="border-t border-slate-100">
       <td class="px-3 py-3 align-top"><a href="#/product/${sp.product_id}" class="text-sm font-medium text-slate-800 hover:text-indigo-600">${_esc(name)}</a>
@@ -229,22 +230,24 @@ function sectionUnitProfit(d) {
       ${_unitCell(web, cost, r.commonPct + r.adsPct)}
       ${_unitCell(kolLow, cost, r.commonPct + r.kolPct, kolLabel)}
       ${_unitCell(b2b, cost, r.commonPct)}
+      ${_unitCell(promo, cost, r.commonPct + r.adsPct, promo ? promo.price_name : '')}
     </tr>`;
   }).join('');
   const singles = (d.summary.products || []).filter(p => !bundleSet.has(p.product_id));
   const bundles = (d.summary.products || []).filter(p => bundleSet.has(p.product_id));
-  const head = t => `<tr class="bg-slate-50/60"><td colspan="4" class="px-3 py-2 text-xs font-semibold text-slate-500">${t}</td></tr>`;
+  const head = t => `<tr class="bg-slate-50/60"><td colspan="5" class="px-3 py-2 text-xs font-semibold text-slate-500">${t}</td></tr>`;
 
   return `
     <section class="mb-10">
       <h2 class="section-title mb-3">③ 每賣一支／一組，實際賺多少</h2>
       <div class="glass-card-soft p-2 overflow-x-auto">
-        <table class="w-full min-w-[560px]">
+        <table class="w-full min-w-[680px]">
           <thead><tr class="text-xs text-slate-500">
             <th class="px-3 py-2 text-left font-medium">產品</th>
             <th class="px-3 py-2 text-right font-medium">官網賣一個</th>
             <th class="px-3 py-2 text-right font-medium">KOL 團購賣一個</th>
             <th class="px-3 py-2 text-right font-medium">企業採購賣一個</th>
+            <th class="px-3 py-2 text-right font-medium">活動價（官網）</th>
           </tr></thead>
           <tbody>
             ${singles.length ? head('單品') + rowsFor(singles) : ''}
@@ -254,7 +257,7 @@ function sectionUnitProfit(d) {
       </div>
       <div class="text-[11px] text-slate-500 mt-2 leading-relaxed space-y-0.5">
         <p>怎麼算：每個賺 ＝ 售價 − 產品成本 − 依售價扣的費用。綠色毛利 ≥ 40%、黃色 20–40%、紅色 &lt; 20%。</p>
-        <p>三個通路都扣：${r.commonNames.join('、') || '無'}（共 ${r.commonPct}%）。官網另扣：${r.adsNames.join('、') || '無'}（${r.adsPct}%）。KOL 團購另扣：KOL 分潤 ${r.kolPct.toFixed(0)}%。</p>
+        <p>三個通路都扣：${r.commonNames.join('、') || '無'}（共 ${r.commonPct}%）。官網和活動價另扣：${r.adsNames.join('、') || '無'}（${r.adsPct}%）。KOL 團購另扣：KOL 分潤 ${r.kolPct.toFixed(0)}%。</p>
         <p>倉儲費這類每月固定的費用沒有攤進「每個賺多少」。實際付出去的錢，請在記帳新增一筆「每月固定」支出，就會出現在 ① 的支出裡。</p>
       </div>
       <div class="text-right mt-1"><a href="#/products" class="text-xs text-indigo-600 hover:underline">改售價或成本 →</a></div>

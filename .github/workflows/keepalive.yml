@@ -14,7 +14,7 @@ jobs:
       - name: Ping health endpoint to keep the database warm
         run: |
           # /healthz 為公開端點（不需密碼），內部會查詢 Supabase 一次以保持活躍，但不回傳任何資料
-          URL="https://aura-cost-system-production.up.railway.app/healthz"
+          URL="https://aura-cost.up.railway.app/healthz"
           code=$(curl -s -m 30 -o /tmp/h.json -w "%{http_code}" "$URL")
           echo "healthz -> HTTP $code · $(cat /tmp/h.json)"
           if [ "$code" != "200" ]; then

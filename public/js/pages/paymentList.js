@@ -174,14 +174,76 @@ async function renderPaymentList() {
     }
 
     container.innerHTML = `
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
-        ${rows.map(r =>
-          r._kind === 'income' ? renderIncomeCard(r)
-          : r._kind === 'kol' ? renderKolCard(r)
-          : r._kind === 'exprec' ? renderExpenseRecordCard(r)
-          : renderExpenseCard(r)
-        ).join('')}
+      <div class="glass-card-soft p-2 overflow-x-auto">
+        <table class="w-full min-w-[760px] text-sm">
+          <thead><tr class="text-xs text-slate-500 text-left">
+            <th class="px-3 py-2 font-medium w-24">日期</th>
+            <th class="px-3 py-2 font-medium w-28">類別</th>
+            <th class="px-3 py-2 font-medium">項目</th>
+            <th class="px-3 py-2 font-medium">狀態</th>
+            <th class="px-3 py-2 font-medium text-right">金額</th>
+            <th class="px-3 py-2 font-medium text-right w-32"></th>
+          </tr></thead>
+          <tbody>${rows.map(renderRecordRow).join('')}</tbody>
+        </table>
       </div>`;
+  }
+
+  // ── 表格列（收入 / KOL / 貨款 / 一般支出）──────────────
+  function recChip(text, color) {
+    return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap" style="background:${color}1f;color:${color}">${text}</span>`;
+  }
+  function recBtns(editAction, delAction, r, name) {
+    return `<button data-action="${editAction}" data-id="${r.id}" class="chip-btn chip-btn-primary">編輯</button>
+            <button data-action="${delAction}" data-id="${r.id}" data-name="${escHtml(name)}" class="chip-btn chip-btn-danger">刪除</button>`;
+  }
+  function renderRecordRow(r) {
+    let date = r._date, cat, item, sub = '', status = '', amount, actions;
+    const muted = r.cancelled ? 'opacity-50' : '';
+    if (r._kind === 'income') {
+      const c = INCOME_CATEGORY_LABEL[r.category] || INCOME_CATEGORY_LABEL.other;
+      cat = recChip(`💰 ${c.text}`, '#059669');
+      item = escHtml(r.source_name);
+      sub = escHtml(r.description || r.product_name || '');
+      status = r.received_at ? recChip('✓ 已入帳', '#059669') : recChip('⏳ 待入帳', '#b45309');
+      amount = `<span class="num-display text-emerald-700">+NT$${fmtMoney(r.amount)}</span>`;
+      actions = recBtns('edit-income', 'delete-income', r, r.source_name);
+    } else if (r._kind === 'kol') {
+      cat = recChip('🎀 KOL 團購', '#db2777');
+      item = escHtml(r.kol_name || 'KOL');
+      sub = escHtml([r.campaign_name, r.product_name].filter(Boolean).join(' · '));
+      status = r.paid ? recChip('✓ 分潤已付', '#059669') : recChip(`⏳ 分潤待付 NT$${fmtMoney(r.commission_amount)}`, '#b45309');
+      amount = `<span class="num-display text-emerald-700">+NT$${fmtMoney(r.sales_amount)}</span>`;
+      actions = `<a href="#/kols" class="chip-btn chip-btn-primary">到 KOL 分潤</a>`;
+    } else if (r._kind === 'exprec') {
+      const m = expenseCatMeta(r.category);
+      cat = recChip(`${m.emoji} ${escHtml(m.text)}`, m.color);
+      item = escHtml(r.name);
+      sub = escHtml([r.label, r.vendor, r.payment_method].filter(Boolean).join(' · '));
+      status = r.recurring ? recChip('🔁 每月固定', '#7c3aed') : recChip('✓ 已付', '#059669');
+      if (r.cancelled) status = recChip('已取消', '#64748b');
+      amount = `<span class="num-display text-rose-600">−NT$${fmtMoney(r.amount)}</span>${r.recurring ? '<span class="text-[10px] text-slate-400"> /月</span>' : ''}`;
+      actions = recBtns('edit-expense', 'delete-expense', r, r.name);
+    } else {
+      cat = recChip('📦 貨款', '#475569');
+      item = escHtml(r.supplier_name || '供應商');
+      sub = escHtml(r.item_description || '');
+      const sl = STATUS_LABEL[r.status] || STATUS_LABEL.pending;
+      const color = { pending: '#c2410c', deposit_paid: '#b45309', completed: '#059669', cancelled: '#64748b' }[r.status] || '#c2410c';
+      status = recChip(sl.text, color) + `<div class="text-[10px] text-slate-400 mt-0.5">訂金 NT$${fmtMoney(r.deposit_amount)} · 尾款 NT$${fmtMoney(r.balance_amount)}</div>`;
+      const actual = parseFloat(r.actual_total_cost || r.total_amount || 0);
+      amount = `<span class="num-display text-rose-600">−NT$${fmtMoney(actual)}</span>`
+        + (actual !== parseFloat(r.total_amount || 0) ? `<div class="text-[10px] text-slate-400">貨款 NT$${fmtMoney(r.total_amount)}＋運營費等</div>` : '');
+      actions = recBtns('edit-order', 'delete-order', r, r.item_description || '');
+    }
+    return `<tr class="border-t border-slate-100 align-top hover:bg-white/50 ${muted}">
+      <td class="px-3 py-2.5 text-xs text-slate-500 whitespace-nowrap">${fmtDate(date)}</td>
+      <td class="px-3 py-2.5">${cat}</td>
+      <td class="px-3 py-2.5"><div class="font-medium text-slate-800">${item}</div>${sub ? `<div class="text-[11px] text-slate-400 mt-0.5">${sub}</div>` : ''}</td>
+      <td class="px-3 py-2.5">${status}</td>
+      <td class="px-3 py-2.5 text-right whitespace-nowrap">${amount}</td>
+      <td class="px-3 py-2.5 text-right whitespace-nowrap">${actions}</td>
+    </tr>`;
   }
 
   // 系統 / 其他支出卡片
