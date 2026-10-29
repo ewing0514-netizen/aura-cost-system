@@ -13,13 +13,30 @@
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // 暖色調主題：奶油底、濃咖啡主色、焦糖點綴；收入用鼠尾草綠、支出用陶土紅
+    const warm   = {50:'#faf7f3',100:'#f3eee7',200:'#e7dfd4',300:'#d6cabb',400:'#b3a493',500:'#8f8070',600:'#6f6255',700:'#574b40',800:'#3d332b',900:'#2b221c',950:'#1d1612'};
+    const caramel= {50:'#faf4ee',100:'#f3e6d8',200:'#e8cfb5',300:'#d9b08b',400:'#c99567',500:'#b07a4f',600:'#94633e',700:'#774e31',800:'#573a26',900:'#3a271b',950:'#271a12'};
+    const mauve  = {50:'#f8f3f2',100:'#efe3e0',200:'#dfc7c2',300:'#c9a59d',400:'#ae8378',500:'#946a5f',600:'#7a554b',700:'#61433b',800:'#47312b',900:'#2f201c',950:'#1f1512'};
+    const sage   = {50:'#f4f6ef',100:'#e6ecdb',200:'#cfd9ba',300:'#b0c092',400:'#8fa46c',500:'#738a52',600:'#5d7343',700:'#4a5c37',800:'#38452b',900:'#263020',950:'#181f14'};
+    const terra  = {50:'#fbf3ef',100:'#f6e2d9',200:'#ecc4b3',300:'#dea08a',400:'#cc7d63',500:'#b8614a',600:'#9c4d39',700:'#7d3d2e',800:'#5c2e23',900:'#3f1f18',950:'#2a140f'};
+    const rosy   = {50:'#fbf2f1',100:'#f5e0de',200:'#eabfbb',300:'#db9b95',400:'#c87a73',500:'#b05f59',600:'#934b46',700:'#763b37',800:'#572c29',900:'#3b1e1c',950:'#28140f'};
+    tailwind.config = { theme: { extend: { colors: {
+      gray: warm, slate: warm, zinc: warm, neutral: warm,
+      indigo: caramel, blue: caramel, sky: caramel,
+      violet: mauve, purple: mauve,
+      emerald: sage, green: sage, teal: sage,
+      rose: terra, red: terra,
+      pink: rosy,
+    } } } };
+  </script>
 
   <!-- Chart.js：延遲載入（僅損益總覽頁使用，由 analysisSummary.js 動態引入）-->
 
   <!-- 自訂樣式 -->
   <link rel="stylesheet" href="/css/main.css">
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="min-h-screen" style="background:#f6f1ea">
 
   <!-- 頂部導覽列 -->
   <nav class="glass-nav sticky top-0 z-50 font-apple">

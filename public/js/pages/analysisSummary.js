@@ -340,7 +340,7 @@ function renderDashboard(products, global_costs, stats) {
   c.innerHTML = `
     <!-- ① 產品毛利層 -->
     <div class="mb-4 flex items-center gap-2">
-      <span class="status-chip" style="background:rgba(148,163,184,0.15);color:#475569;border-color:rgba(148,163,184,0.3)">Layer 1</span>
+      <span class="status-chip" style="background:rgba(148,163,184,0.15);color:#6f6255;border-color:rgba(148,163,184,0.3)">Layer 1</span>
       <h2 class="text-sm font-semibold text-slate-700">產品毛利層（不含全公司成本）</h2>
     </div>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
@@ -1109,9 +1109,9 @@ function renderComparisonChart(data) {
     data: {
       labels: rows.map(r => r.product_name),
       datasets: [
-        { label: '毛利率',     data: rows.map(r => r.gross_margin_pct),     backgroundColor: '#10b981', borderRadius: 4 },
-        { label: '含行銷',     data: rows.map(r => r.after_mkt_margin_pct), backgroundColor: '#ec4899', borderRadius: 4 },
-        { label: '淨利率',     data: rows.map(r => r.net_margin_pct),       backgroundColor: '#6366f1', borderRadius: 4 },
+        { label: '毛利率',     data: rows.map(r => r.gross_margin_pct),     backgroundColor: '#738a52', borderRadius: 4 },
+        { label: '含行銷',     data: rows.map(r => r.after_mkt_margin_pct), backgroundColor: '#b05f59', borderRadius: 4 },
+        { label: '淨利率',     data: rows.map(r => r.net_margin_pct),       backgroundColor: '#b07a4f', borderRadius: 4 },
       ],
     },
     options: {
@@ -1125,7 +1125,7 @@ function renderComparisonChart(data) {
         },
       },
       scales: {
-        y: { ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#f3f4f6' } },
+        y: { ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#f3eee7' } },
         x: { grid: { display: false }, ticks: { font: { size: 11 } } },
       },
     },

@@ -390,7 +390,7 @@ async function renderKolList() {
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="font-semibold text-slate-900" style="letter-spacing:-0.015em">${escHtmlKol(k.name)}</span>
-                  <span class="status-chip" style="background:linear-gradient(135deg,rgba(252,231,243,0.85) 0%,rgba(251,207,232,0.55) 100%);color:#9d174d;border-color:rgba(249,168,212,0.5)">預設 ${parseFloat(k.default_commission_pct).toFixed(1)}%</span>
+                  <span class="status-chip" style="background:linear-gradient(135deg,rgba(252,231,243,0.85) 0%,rgba(251,207,232,0.55) 100%);color:#763b37;border-color:rgba(249,168,212,0.5)">預設 ${parseFloat(k.default_commission_pct).toFixed(1)}%</span>
                   ${!k.is_active ? '<span class="text-[11px] text-slate-400">（停用）</span>' : ''}
                 </div>
                 ${k.contact_info ? `<div class="text-[12px] text-slate-500 mt-1.5 truncate">${escHtmlKol(k.contact_info)}</div>` : ''}

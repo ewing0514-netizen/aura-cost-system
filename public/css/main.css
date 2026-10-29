@@ -803,3 +803,149 @@ tr:hover td { background: #f9fafb; }
   margin-top: 4px;
   letter-spacing: -0.01em;
 }
+
+/* ================================================================
+   暖色調主題（奶油底 × 濃咖啡 × 焦糖），覆寫上方的冷色玻璃樣式
+   ================================================================ */
+:root {
+  --espresso: #2b201a;
+  --espresso-2: #3d2e24;
+  --caramel: #b07a4f;
+  --caramel-light: #d4a373;
+  --cream: #f6f1ea;
+  --ink-soft: #8f8070;
+  --sage: #5d7343;
+  --terra: #b8614a;
+}
+body { color: var(--espresso); }
+
+.ambient-bg::before {
+  background:
+    radial-gradient(70% 40% at 12% 8%,  rgba(232, 207, 181, 0.50) 0%, transparent 60%),
+    radial-gradient(60% 50% at 88% 14%, rgba(236, 196, 179, 0.38) 0%, transparent 60%),
+    radial-gradient(55% 40% at 50% 90%, rgba(217, 200, 176, 0.40) 0%, transparent 60%),
+    linear-gradient(180deg, #faf6f0 0%, #f3ece3 100%);
+}
+
+/* 卡片：奶油白玻璃 + 暖棕陰影 */
+.glass-card, .glass-stat, .glass-card-soft, .glass-record-expense,
+.product-card-glass, .glass-content-section {
+  background: rgba(255, 252, 247, 0.72);
+  border-color: rgba(255, 250, 243, 0.9);
+  box-shadow: 0 6px 24px rgba(58, 39, 27, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.glass-card-soft { background: rgba(255, 252, 247, 0.62); }
+.glass-card:hover, .glass-record-expense:hover {
+  box-shadow: 0 14px 36px rgba(58, 39, 27, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+.product-card-glass:hover { box-shadow: 0 16px 40px rgba(176, 122, 79, 0.18), inset 0 1px 0 #fff; }
+
+.glass-stat-income {
+  background: linear-gradient(135deg, rgba(240, 244, 230, 0.92) 0%, rgba(214, 224, 194, 0.60) 100%);
+  border-color: rgba(176, 192, 146, 0.55);
+  box-shadow: 0 8px 26px rgba(93, 115, 67, 0.10), inset 0 1px 0 #fff;
+}
+.glass-stat-expense {
+  background: linear-gradient(135deg, rgba(251, 238, 232, 0.92) 0%, rgba(240, 210, 196, 0.60) 100%);
+  border-color: rgba(222, 160, 138, 0.50);
+  box-shadow: 0 8px 26px rgba(184, 97, 74, 0.10), inset 0 1px 0 #fff;
+}
+.glass-stat-net {
+  background: linear-gradient(135deg, rgba(250, 242, 232, 0.94) 0%, rgba(232, 207, 181, 0.62) 100%);
+  border-color: rgba(217, 176, 139, 0.55);
+  box-shadow: 0 8px 26px rgba(176, 122, 79, 0.12), inset 0 1px 0 #fff;
+}
+.glass-stat-partner {
+  background: linear-gradient(135deg, rgba(248, 240, 238, 0.94) 0%, rgba(223, 199, 194, 0.58) 100%);
+  border-color: rgba(201, 165, 157, 0.55);
+  box-shadow: 0 8px 26px rgba(148, 106, 95, 0.10), inset 0 1px 0 #fff;
+}
+.glass-record-income {
+  background: linear-gradient(135deg, rgba(246, 248, 240, 0.85) 0%, rgba(230, 236, 219, 0.60) 100%);
+  border-color: rgba(176, 192, 146, 0.45);
+  box-shadow: 0 6px 22px rgba(93, 115, 67, 0.08), inset 0 1px 0 #fff;
+}
+.glass-warning {
+  background: linear-gradient(135deg, rgba(251, 243, 226, 0.92) 0%, rgba(240, 220, 180, 0.60) 100%);
+  border-color: rgba(212, 163, 115, 0.50);
+}
+
+/* 導覽列 */
+.glass-nav {
+  background: rgba(250, 246, 240, 0.80);
+  border-bottom-color: rgba(231, 223, 212, 0.9);
+  box-shadow: 0 1px 0 rgba(58, 39, 27, 0.04), 0 2px 12px rgba(58, 39, 27, 0.03);
+}
+.nav-link { color: #6f6255; border-radius: 9999px; }
+.nav-link:hover { color: var(--espresso); background: rgba(255, 252, 247, 0.8); }
+.nav-link.active {
+  background: var(--espresso);
+  color: #faf6f0;
+  box-shadow: 0 4px 12px rgba(43, 32, 26, 0.18);
+}
+
+/* 分頁藥丸 */
+.pill-tab-bar { background: rgba(239, 231, 221, 0.75); border-color: rgba(255, 250, 243, 0.8); border-radius: 9999px; }
+.pill-tab { color: var(--ink-soft); border-radius: 9999px; }
+.pill-tab:hover { color: var(--espresso); }
+.pill-tab.active { background: #fffcf7; color: var(--espresso); box-shadow: 0 2px 8px rgba(58, 39, 27, 0.10); }
+
+/* 按鈕：濃咖啡實心藥丸、外框藥丸 */
+.btn-apple-primary, .btn-apple-income, .btn-apple-pink, .btn-apple-ghost { border-radius: 9999px; }
+.btn-apple-primary {
+  background: linear-gradient(135deg, var(--espresso-2) 0%, var(--espresso) 100%);
+  box-shadow: 0 6px 16px rgba(43, 32, 26, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.btn-apple-primary:hover { box-shadow: 0 8px 20px rgba(43, 32, 26, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
+.btn-apple-income {
+  background: linear-gradient(135deg, #6f8a54 0%, var(--sage) 100%);
+  box-shadow: 0 6px 16px rgba(93, 115, 67, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.btn-apple-income:hover { box-shadow: 0 8px 20px rgba(93, 115, 67, 0.33); }
+.btn-apple-pink {
+  background: linear-gradient(135deg, #c99567 0%, var(--caramel) 100%);
+  box-shadow: 0 6px 16px rgba(176, 122, 79, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.btn-apple-pink:hover { box-shadow: 0 8px 20px rgba(176, 122, 79, 0.36); }
+.btn-apple-ghost {
+  color: var(--espresso);
+  background: rgba(255, 252, 247, 0.7);
+  border: 1.5px solid rgba(43, 32, 26, 0.75);
+}
+.btn-apple-ghost:hover { background: #fffcf7; border-color: var(--espresso); }
+
+.chip-btn { color: var(--ink-soft); background: rgba(255, 252, 247, 0.6); border-color: rgba(231, 223, 212, 0.9); border-radius: 9999px; }
+.chip-btn:hover { background: #fffcf7; color: var(--espresso); }
+.chip-btn-danger:hover  { color: #9c4d39; background: rgba(246, 226, 217, 0.85); }
+.chip-btn-success:hover { color: #4a5c37; background: rgba(230, 236, 219, 0.85); }
+.chip-btn-primary:hover { color: #774e31; background: rgba(243, 230, 216, 0.85); }
+
+/* 狀態 / 分類 chip */
+.status-pending      { background: rgba(246, 226, 217, 0.75); color: #9c4d39; border-color: rgba(222, 160, 138, 0.45); }
+.status-deposit-paid { background: rgba(243, 230, 216, 0.85); color: #774e31; border-color: rgba(217, 176, 139, 0.50); }
+.status-completed    { background: rgba(230, 236, 219, 0.85); color: #4a5c37; border-color: rgba(176, 192, 146, 0.50); }
+.status-cancelled    { background: rgba(231, 223, 212, 0.75); color: #6f6255; border-color: rgba(214, 202, 187, 0.60); }
+.status-pending-inc  { background: rgba(245, 233, 205, 0.85); color: #7a5a1e; border-color: rgba(222, 190, 120, 0.50); }
+.status-received     { background: rgba(230, 236, 219, 0.85); color: #4a5c37; border-color: rgba(176, 192, 146, 0.50); }
+.cat-product-sales { background: rgba(243, 230, 216, 0.85); color: #774e31; border-color: rgba(217, 176, 139, 0.5); }
+.cat-service       { background: rgba(239, 227, 224, 0.85); color: #61433b; border-color: rgba(201, 165, 157, 0.5); }
+.cat-consulting    { background: rgba(230, 236, 219, 0.85); color: #4a5c37; border-color: rgba(176, 192, 146, 0.5); }
+.cat-other         { background: rgba(231, 223, 212, 0.75); color: #574b40; border-color: rgba(214, 202, 187, 0.6); }
+
+/* 文字 */
+.h-display { color: var(--espresso); font-weight: 800; letter-spacing: -0.02em; }
+.section-title { color: var(--espresso); }
+.section-subtitle { color: var(--ink-soft); }
+/* 焦糖漸層強調字（像參考圖的「妳的成長」）*/
+.text-accent {
+  background: linear-gradient(135deg, #a8693f 0%, #d4a373 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.glass-divider { background: linear-gradient(90deg, transparent 0%, rgba(58, 39, 27, 0.10) 50%, transparent 100%); }
+
+/* 舊版元件 */
+.spinner { border-color: #e7dfd4; border-top-color: var(--caramel); }
+.toast-success { background: var(--sage); }
+.toast-error   { background: #9c4d39; }
+.toast-info    { background: var(--espresso); }
+tr:hover td { background: rgba(250, 246, 240, 0.7); }

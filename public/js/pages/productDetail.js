@@ -596,7 +596,7 @@ async function renderAnalysisTab(container) {
           ${sortedPrices.map(p => {
             const marginClass = p.profit_margin_pct > 0 ? 'profit-positive' : 'profit-negative';
             const barWidth = Math.max(0, Math.min(100, p.profit_margin_pct));
-            const barColor = p.profit_margin_pct >= 30 ? '#059669' : p.profit_margin_pct >= 10 ? '#d97706' : '#dc2626';
+            const barColor = p.profit_margin_pct >= 30 ? '#5d7343' : p.profit_margin_pct >= 10 ? '#b07a4f' : '#9c4d39';
             return `
               <tr>
                 <td class="px-4 py-3">
@@ -644,8 +644,8 @@ async function renderAnalysisTab(container) {
   // 繪製圖表
   const ctx = document.getElementById('profit-chart').getContext('2d');
   const colors = sortedPrices.map(p =>
-    p.profit_margin_pct >= 30 ? '#059669' :
-    p.profit_margin_pct >= 10 ? '#d97706' : '#dc2626'
+    p.profit_margin_pct >= 30 ? '#5d7343' :
+    p.profit_margin_pct >= 10 ? '#b07a4f' : '#9c4d39'
   );
 
   new Chart(ctx, {
@@ -673,7 +673,7 @@ async function renderAnalysisTab(container) {
         y: {
           beginAtZero: true,
           ticks: { callback: v => v + '%' },
-          grid: { color: '#f3f4f6' }
+          grid: { color: '#f3eee7' }
         },
         x: { grid: { display: false } }
       }

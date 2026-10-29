@@ -202,17 +202,17 @@ async function renderPaymentList() {
     const muted = r.cancelled ? 'opacity-50' : '';
     if (r._kind === 'income') {
       const c = INCOME_CATEGORY_LABEL[r.category] || INCOME_CATEGORY_LABEL.other;
-      cat = recChip(`💰 ${c.text}`, '#059669');
+      cat = recChip(`💰 ${c.text}`, '#5d7343');
       item = escHtml(r.source_name);
       sub = escHtml(r.description || r.product_name || '');
-      status = r.received_at ? recChip('✓ 已入帳', '#059669') : recChip('⏳ 待入帳', '#b45309');
+      status = r.received_at ? recChip('✓ 已入帳', '#5d7343') : recChip('⏳ 待入帳', '#94633e');
       amount = `<span class="num-display text-emerald-700">+NT$${fmtMoney(r.amount)}</span>`;
       actions = recBtns('edit-income', 'delete-income', r, r.source_name);
     } else if (r._kind === 'kol') {
-      cat = recChip('🎀 KOL 團購', '#db2777');
+      cat = recChip('🎀 KOL 團購', '#934b46');
       item = escHtml(r.kol_name || 'KOL');
       sub = escHtml([r.campaign_name, r.product_name].filter(Boolean).join(' · '));
-      status = r.paid ? recChip('✓ 分潤已付', '#059669') : recChip(`⏳ 分潤待付 NT$${fmtMoney(r.commission_amount)}`, '#b45309');
+      status = r.paid ? recChip('✓ 分潤已付', '#5d7343') : recChip(`⏳ 分潤待付 NT$${fmtMoney(r.commission_amount)}`, '#94633e');
       amount = `<span class="num-display text-emerald-700">+NT$${fmtMoney(r.sales_amount)}</span>`;
       actions = `<a href="#/kols" class="chip-btn chip-btn-primary">到 KOL 分潤</a>`;
     } else if (r._kind === 'exprec') {
@@ -220,16 +220,16 @@ async function renderPaymentList() {
       cat = recChip(`${m.emoji} ${escHtml(m.text)}`, m.color);
       item = escHtml(r.name);
       sub = escHtml([r.label, r.vendor, r.payment_method].filter(Boolean).join(' · '));
-      status = r.recurring ? recChip('🔁 每月固定', '#7c3aed') : recChip('✓ 已付', '#059669');
-      if (r.cancelled) status = recChip('已取消', '#64748b');
+      status = r.recurring ? recChip('🔁 每月固定', '#7a554b') : recChip('✓ 已付', '#5d7343');
+      if (r.cancelled) status = recChip('已取消', '#8f8070');
       amount = `<span class="num-display text-rose-600">−NT$${fmtMoney(r.amount)}</span>${r.recurring ? '<span class="text-[10px] text-slate-400"> /月</span>' : ''}`;
       actions = recBtns('edit-expense', 'delete-expense', r, r.name);
     } else {
-      cat = recChip('📦 貨款', '#475569');
+      cat = recChip('📦 貨款', '#6f6255');
       item = escHtml(r.supplier_name || '供應商');
       sub = escHtml(r.item_description || '');
       const sl = STATUS_LABEL[r.status] || STATUS_LABEL.pending;
-      const color = { pending: '#c2410c', deposit_paid: '#b45309', completed: '#059669', cancelled: '#64748b' }[r.status] || '#c2410c';
+      const color = { pending: '#9c4d39', deposit_paid: '#94633e', completed: '#5d7343', cancelled: '#8f8070' }[r.status] || '#9c4d39';
       status = recChip(sl.text, color) + `<div class="text-[10px] text-slate-400 mt-0.5">訂金 NT$${fmtMoney(r.deposit_amount)} · 尾款 NT$${fmtMoney(r.balance_amount)}</div>`;
       const actual = parseFloat(r.actual_total_cost || r.total_amount || 0);
       amount = `<span class="num-display text-rose-600">−NT$${fmtMoney(actual)}</span>`
@@ -293,7 +293,7 @@ async function renderPaymentList() {
         <div class="flex items-start justify-between gap-4">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap mb-2">
-              <span class="status-chip" style="background:linear-gradient(135deg,#ec4899 0%,#db2777 100%);color:white;border:0">🎀 KOL 團購</span>
+              <span class="status-chip" style="background:linear-gradient(135deg,#b05f59 0%,#934b46 100%);color:white;border:0">🎀 KOL 團購</span>
               <span class="text-base font-semibold text-slate-900" style="letter-spacing:-0.015em">${escHtml(k.kol_name || 'KOL')}</span>
               ${k.campaign_name ? `<span class="category-chip cat-service">${escHtml(k.campaign_name)}</span>` : ''}
               ${paidBadge}
@@ -349,7 +349,7 @@ async function renderPaymentList() {
         <div class="flex items-start justify-between gap-4">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap mb-2">
-              <span class="status-chip" style="background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:white;border:0">💰 收入</span>
+              <span class="status-chip" style="background:linear-gradient(135deg,#738a52 0%,#5d7343 100%);color:white;border:0">💰 收入</span>
               <span class="text-base font-semibold text-slate-900" style="letter-spacing:-0.015em">${escHtml(i.source_name)}</span>
               <span class="category-chip ${catCls}">${cat.emoji} ${cat.text}</span>
               ${statusChip}
@@ -433,7 +433,7 @@ async function renderPaymentList() {
           <div class="flex items-start justify-between gap-4">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap mb-2">
-                <span class="status-chip" style="background:linear-gradient(135deg,#64748b 0%,#475569 100%);color:white;border:0">💸 支出</span>
+                <span class="status-chip" style="background:linear-gradient(135deg,#8f8070 0%,#6f6255 100%);color:white;border:0">💸 支出</span>
                 <span class="text-base font-semibold text-slate-900" style="letter-spacing:-0.015em">${escHtml(o.supplier_name)}</span>
                 <span class="status-chip ${statusCls}">${sl.text}</span>
                 ${o.invoice_no ? `<span class="text-[11px] text-slate-400 font-mono">${escHtml(o.invoice_no)}</span>` : ''}
@@ -858,14 +858,14 @@ async function renderPaymentList() {
 //   預設類別 + 使用者已用過的自訂類別（自動累積，存在 expense_records.category）
 // =====================================================
 const EXPENSE_CATEGORIES = [
-  { key: '系統相關', emoji: '💻', color: '#8b5cf6' },
-  { key: '行銷費',   emoji: '📣', color: '#ec4899' },
-  { key: '產品花費', emoji: '🧴', color: '#0ea5e9' },
-  { key: '行政費',   emoji: '🏢', color: '#f59e0b' },
-  { key: '其他',     emoji: '🧾', color: '#64748b' },
+  { key: '系統相關', emoji: '💻', color: '#946a5f' },
+  { key: '行銷費',   emoji: '📣', color: '#b05f59' },
+  { key: '產品花費', emoji: '🧴', color: '#a67c52' },
+  { key: '行政費',   emoji: '🏢', color: '#c08a3e' },
+  { key: '其他',     emoji: '🧾', color: '#8f8070' },
 ];
 // 自訂類別配色盤（依名稱雜湊取穩定顏色）
-const _EXP_CAT_PALETTE = ['#14b8a6', '#6366f1', '#f43f5e', '#84cc16', '#a855f7', '#f97316', '#06b6d4', '#eab308'];
+const _EXP_CAT_PALETTE = ['#8fa46c', '#b07a4f', '#b8614a', '#8fa46c', '#ae8378', '#c27a4e', '#7f8f6a', '#b8963e'];
 let _customExpenseCats = []; // 由 loadOrders 依現有記錄填入
 
 // 舊代碼相容：system → 系統相關、other → 其他

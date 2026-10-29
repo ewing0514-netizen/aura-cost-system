@@ -24,7 +24,7 @@ async function renderOverview() {
       <div class="max-w-5xl mx-auto px-4 py-10">
         <div class="flex items-end justify-between mb-6 flex-wrap gap-3">
           <div>
-            <h1 class="h-display">總覽</h1>
+            <h1 class="h-display"><span class="text-accent">總覽</span></h1>
             <p class="text-slate-500 text-sm mt-1.5">只看最重要的四件事：賺多少、每個賺多少、還要付多少、庫存夠不夠</p>
           </div>
           <div class="flex items-center gap-2" id="dash-month"></div>
